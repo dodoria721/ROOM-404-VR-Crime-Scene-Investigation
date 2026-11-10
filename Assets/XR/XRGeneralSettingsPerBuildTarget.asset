@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-5779569044974119811
+--- !u!114 &-1077450462918535239
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -16,7 +16,7 @@ MonoBehaviour:
   m_AutomaticLoading: 0
   m_AutomaticRunning: 0
   m_Loaders:
-  - {fileID: 11400000, guid: 788be0d16fba7a8408d65b86a288dbd6, type: 2}
+  - {fileID: 11400000, guid: efab29ea360f37543ac728c42b94291d, type: 2}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -33,8 +33,8 @@ MonoBehaviour:
   Values: []
   m_SettingsPerBuildTarget:
   - buildTarget: 1
-    settings: {fileID: 1532455843497967719}
---- !u!114 &1532455843497967719
+    settings: {fileID: 1546362105451086912}
+--- !u!114 &1546362105451086912
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -46,5 +46,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d236b7d11115f2143951f1e14045df39, type: 3}
   m_Name: Standalone Settings
   m_EditorClassIdentifier: Unity.XR.Management::UnityEngine.XR.Management.XRGeneralSettings
-  m_Manager: {fileID: -5779569044974119811}
+  m_Manager: {fileID: -1077450462918535239}
   m_InitManagerOnStart: 1
