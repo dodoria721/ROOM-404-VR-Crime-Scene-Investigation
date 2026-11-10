@@ -47,6 +47,7 @@ public sealed class DeductionUIController : MonoBehaviour
 
     public event Action<SuspectId> SuspectPreviewChanged;
     public event Action<SuspectId, bool> ResultPresented;
+    public event Action<bool> PanelVisibilityChanged;
 
     public bool HasSelection => hasSelection;
     public SuspectId SelectedSuspect => selectedSuspect;
@@ -417,8 +418,12 @@ public sealed class DeductionUIController : MonoBehaviour
 
     private void SetPanelVisible(bool visible)
     {
-        if (deductionPanel != null && deductionPanel.activeSelf != visible)
+        bool changed = deductionPanel != null && deductionPanel.activeSelf != visible;
+        if (changed)
+        {
             deductionPanel.SetActive(visible);
+            PanelVisibilityChanged?.Invoke(visible);
+        }
 
         RefreshInteractableState();
     }

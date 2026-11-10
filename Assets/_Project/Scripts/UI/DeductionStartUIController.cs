@@ -1,0 +1,287 @@
+using System.Collections;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>
+/// 필수 증거 진행도와 사건 추리 시작 버튼만 담당한다.
+/// 실제 추리판 표시, 용의자 선택 및 결과 판정은 기존 컨트롤러에 위임한다.
+/// </summary>
+public sealed class DeductionStartUIController : MonoBehaviour
+{
+    private const int DefaultRequiredEvidenceTotal = 4;
+
+    [Header("UI")]
+    [SerializeField] private GameObject startAreaRoot;
+    [SerializeField] private Button deductionStartButton;
+    [SerializeField] private TMP_Text guidanceText;
+    [SerializeField] private TMP_Text requiredEvidenceProgressText;
+    [SerializeField] private Image[] requiredEvidenceIndicators;
+
+    [Header("Existing Controllers")]
+    [SerializeField] private DeductionUIController deductionUIController;
+    [SerializeField] private ResultController resultController;
+
+    [Header("Progress Display")]
+    [Min(1)]
+    [SerializeField] private int requiredEvidenceTotal = DefaultRequiredEvidenceTotal;
+    [SerializeField] private Color collectedIndicatorColor = new(0.26f, 0.65f, 0.61f, 1f);
+    [SerializeField] private Color missingIndicatorColor = new(0.28f, 0.34f, 0.39f, 1f);
+
+    private EvidenceManager subscribedManager;
+    private Coroutine managerSubscribeRoutine;
+
+    private void Awake()
+    {
+        ResolveReferences();
+    }
+
+    private void OnEnable()
+    {
+        ResolveReferences();
+        RegisterButtonListener();
+        SubscribeToUIEvents();
+
+        if (!TrySubscribeToEvidenceManager())
+            managerSubscribeRoutine = StartCoroutine(SubscribeWhenManagerIsReady());
+
+        RefreshView();
+    }
+
+    private void OnDisable()
+    {
+        StopManagerSubscribeRoutine();
+        UnsubscribeFromEvidenceManager();
+        UnsubscribeFromUIEvents();
+        UnregisterButtonListener();
+    }
+
+    private void OnDestroy()
+    {
+        StopManagerSubscribeRoutine();
+        UnsubscribeFromEvidenceManager();
+        UnsubscribeFromUIEvents();
+        UnregisterButtonListener();
+    }
+
+    private void Reset()
+    {
+        ResolveReferences();
+    }
+
+    [ContextMenu("Debug / Open Deduction Panel")]
+    public void TryOpenDeductionPanel()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[추리 시작 UI] 추리판은 Play Mode에서만 열 수 있습니다.", this);
+            return;
+        }
+
+        ResolveReferences();
+        EvidenceManager manager = EvidenceManager.Instance;
+
+        if (manager == null || !manager.CanDeduce)
+        {
+            Debug.Log("[추리 시작 UI] 필수 증거가 부족하여 추리판을 열 수 없습니다.", this);
+            RefreshView();
+            return;
+        }
+
+        if (resultController == null)
+        {
+            Debug.LogError("[추리 시작 UI] ResultController가 연결되지 않았습니다.", this);
+            RefreshView();
+            return;
+        }
+
+        if (resultController.HasResult)
+        {
+            Debug.Log("[추리 시작 UI] 결과가 이미 확정되어 추리판을 다시 열 수 없습니다.", this);
+            RefreshView();
+            return;
+        }
+
+        if (deductionUIController == null)
+        {
+            Debug.LogError("[추리 시작 UI] DeductionUIController가 연결되지 않았습니다.", this);
+            RefreshView();
+            return;
+        }
+
+        if (!deductionUIController.IsPanelOpen)
+            deductionUIController.OpenPanel();
+
+        RefreshView();
+    }
+
+    private IEnumerator SubscribeWhenManagerIsReady()
+    {
+        while (isActiveAndEnabled && !TrySubscribeToEvidenceManager())
+            yield return null;
+
+        managerSubscribeRoutine = null;
+        RefreshView();
+    }
+
+    private bool TrySubscribeToEvidenceManager()
+    {
+        EvidenceManager manager = EvidenceManager.Instance;
+        if (manager == null)
+            return false;
+
+        if (subscribedManager != manager)
+        {
+            UnsubscribeFromEvidenceManager();
+            subscribedManager = manager;
+            subscribedManager.EvidenceRegistered += HandleEvidenceRegistered;
+            subscribedManager.DeductionUnlocked += HandleDeductionUnlocked;
+        }
+
+        RefreshView();
+        return true;
+    }
+
+    private void HandleEvidenceRegistered(EvidenceData _)
+    {
+        RefreshView();
+    }
+
+    private void HandleDeductionUnlocked()
+    {
+        // 해금은 버튼만 활성화하며 추리판을 자동으로 열지 않는다.
+        RefreshView();
+    }
+
+    private void HandlePanelVisibilityChanged(bool _)
+    {
+        RefreshView();
+    }
+
+    private void HandleResultDetermined(SuspectId _, bool __)
+    {
+        RefreshView();
+    }
+
+    private void RefreshView()
+    {
+        EvidenceManager manager = EvidenceManager.Instance;
+        bool hasManager = manager != null;
+        bool hasAllRequiredEvidence = hasManager && manager.CanDeduce;
+        bool isPanelOpen = deductionUIController != null && deductionUIController.IsPanelOpen;
+        bool hasResult = resultController != null && resultController.HasResult;
+        bool hasRequiredReferences = deductionUIController != null && resultController != null;
+        bool canOpen = hasAllRequiredEvidence && !isPanelOpen && !hasResult && hasRequiredReferences;
+
+        if (startAreaRoot != null)
+        {
+            bool shouldShowStartArea = !isPanelOpen && !hasResult;
+            if (startAreaRoot.activeSelf != shouldShowStartArea)
+                startAreaRoot.SetActive(shouldShowStartArea);
+        }
+
+        if (deductionStartButton != null)
+            deductionStartButton.interactable = canOpen;
+
+        int collectedRequired = hasManager ? manager.RequiredCount : 0;
+        int total = Mathf.Max(1, requiredEvidenceTotal);
+
+        if (requiredEvidenceProgressText != null)
+            requiredEvidenceProgressText.text = $"{collectedRequired} / {total}";
+
+        if (requiredEvidenceIndicators != null)
+        {
+            for (int i = 0; i < requiredEvidenceIndicators.Length; i++)
+            {
+                if (requiredEvidenceIndicators[i] != null)
+                    requiredEvidenceIndicators[i].color = i < collectedRequired
+                        ? collectedIndicatorColor
+                        : missingIndicatorColor;
+            }
+        }
+
+        if (guidanceText == null)
+            return;
+
+        if (hasResult)
+            guidanceText.text = "추리 완료";
+        else if (isPanelOpen)
+            guidanceText.text = "추리 진행 중";
+        else if (hasAllRequiredEvidence)
+            guidanceText.text = "필수 증거 확보 완료 — 추리 가능";
+        else
+            guidanceText.text = "필수 증거를 모두 확보해야 합니다.";
+    }
+
+    private void RegisterButtonListener()
+    {
+        UnregisterButtonListener();
+
+        if (deductionStartButton != null)
+            deductionStartButton.onClick.AddListener(TryOpenDeductionPanel);
+    }
+
+    private void UnregisterButtonListener()
+    {
+        if (deductionStartButton != null)
+            deductionStartButton.onClick.RemoveListener(TryOpenDeductionPanel);
+    }
+
+    private void SubscribeToUIEvents()
+    {
+        if (deductionUIController != null)
+        {
+            deductionUIController.PanelVisibilityChanged -= HandlePanelVisibilityChanged;
+            deductionUIController.PanelVisibilityChanged += HandlePanelVisibilityChanged;
+        }
+
+        if (resultController != null)
+        {
+            resultController.ResultDetermined -= HandleResultDetermined;
+            resultController.ResultDetermined += HandleResultDetermined;
+        }
+    }
+
+    private void UnsubscribeFromUIEvents()
+    {
+        if (deductionUIController != null)
+            deductionUIController.PanelVisibilityChanged -= HandlePanelVisibilityChanged;
+
+        if (resultController != null)
+            resultController.ResultDetermined -= HandleResultDetermined;
+    }
+
+    private void UnsubscribeFromEvidenceManager()
+    {
+        if (subscribedManager == null)
+            return;
+
+        subscribedManager.EvidenceRegistered -= HandleEvidenceRegistered;
+        subscribedManager.DeductionUnlocked -= HandleDeductionUnlocked;
+        subscribedManager = null;
+    }
+
+    private void StopManagerSubscribeRoutine()
+    {
+        if (managerSubscribeRoutine == null)
+            return;
+
+        StopCoroutine(managerSubscribeRoutine);
+        managerSubscribeRoutine = null;
+    }
+
+    private void ResolveReferences()
+    {
+        if (deductionUIController == null)
+            deductionUIController = GetComponentInParent<DeductionUIController>(true);
+
+        if (deductionUIController == null)
+            deductionUIController = GetComponentInChildren<DeductionUIController>(true);
+
+        if (resultController == null)
+            resultController = GetComponentInParent<ResultController>(true);
+
+        if (resultController == null)
+            resultController = GetComponentInChildren<ResultController>(true);
+    }
+}
