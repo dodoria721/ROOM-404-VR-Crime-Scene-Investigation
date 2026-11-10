@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 28
-  productGUID: e250cf45bc8a13a498c57884e6713bf8
+  productGUID: 7a4aa7a21e8b03a438e727655850d6e6
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: ROOM-404-VR-Crime-Scene-Investigation
+  productName: ROOM_404
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -850,14 +850,14 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: ROOM-404-VR-Crime-Scene-Investigation
+  metroPackageName: ROOM_404
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: ROOM-404-VR-Crime-Scene-Investigation
+  metroApplicationDescription: ROOM_404
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -928,11 +928,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
-  cloudProjectId: 8f68930d-9246-49f2-9237-50055f892bf9
+  cloudProjectId: 47d7aae8-fab6-4cae-ae59-c47e89256700
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: ROOM-404-VR-Crime-Scene-Investigation 2026-10-28_22-34-48
-  organizationId: dodoria721
+  projectName: ROOM_404
+  organizationId: changyeop55555
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
