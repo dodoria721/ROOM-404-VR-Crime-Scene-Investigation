@@ -1,4 +1,5 @@
 
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
@@ -9,8 +10,11 @@ public class EvidenceUIController : MonoBehaviour
     [SerializeField] private TMP_Text evidenceIdText;
     [SerializeField] private TMP_Text evidenceNameText;
     [SerializeField] private TMP_Text descriptionText;
+    [SerializeField] private TMP_Text requiredProgressText;
 
     private Object currentInspectionSource;
+    private EvidenceManager subscribedManager;
+    private Coroutine subscriptionCoroutine;
 
     private void Awake()
     {
@@ -23,12 +27,23 @@ public class EvidenceUIController : MonoBehaviour
     {
         EvidenceObject.InspectionStarted += ShowEvidence;
         EvidenceObject.InspectionEnded += HideEvidence;
+
+        if (!TrySubscribeToManager())
+            subscriptionCoroutine = StartCoroutine(WaitForEvidenceManager());
     }
 
     private void OnDisable()
     {
         EvidenceObject.InspectionStarted -= ShowEvidence;
         EvidenceObject.InspectionEnded -= HideEvidence;
+
+        if (subscriptionCoroutine != null)
+        {
+            StopCoroutine(subscriptionCoroutine);
+            subscriptionCoroutine = null;
+        }
+
+        UnsubscribeFromManager();
 
         currentInspectionSource = null;
         SetPanelVisible(false);
@@ -85,5 +100,54 @@ public class EvidenceUIController : MonoBehaviour
     {
         if (inspectionPanel != null && inspectionPanel.activeSelf != visible)
             inspectionPanel.SetActive(visible);
+    }
+
+    private bool TrySubscribeToManager()
+    {
+        EvidenceManager manager = EvidenceManager.Instance;
+        if (manager == null)
+            return false;
+
+        if (subscribedManager != manager)
+        {
+            UnsubscribeFromManager();
+            subscribedManager = manager;
+            subscribedManager.EvidenceRegistered += OnEvidenceRegistered;
+        }
+
+        UpdateRequiredProgress();
+        return true;
+    }
+
+    private IEnumerator WaitForEvidenceManager()
+    {
+        while (isActiveAndEnabled && EvidenceManager.Instance == null)
+            yield return null;
+
+        subscriptionCoroutine = null;
+        if (isActiveAndEnabled)
+            TrySubscribeToManager();
+    }
+
+    private void OnEvidenceRegistered(EvidenceData _)
+    {
+        UpdateRequiredProgress();
+    }
+
+    private void UpdateRequiredProgress()
+    {
+        if (requiredProgressText == null)
+            return;
+
+        int requiredCount = subscribedManager != null ? subscribedManager.RequiredCount : 0;
+        requiredProgressText.text = $"{requiredCount}/4";
+    }
+
+    private void UnsubscribeFromManager()
+    {
+        if (subscribedManager != null)
+            subscribedManager.EvidenceRegistered -= OnEvidenceRegistered;
+
+        subscribedManager = null;
     }
 }

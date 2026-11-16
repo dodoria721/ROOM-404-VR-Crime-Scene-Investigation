@@ -14,6 +14,7 @@ public sealed class DeductionStartUIController : MonoBehaviour
     [Header("UI")]
     [SerializeField] private GameObject startAreaRoot;
     [SerializeField] private Button deductionStartButton;
+    [SerializeField] private Button continueInvestigationButton;
     [SerializeField] private TMP_Text guidanceText;
     [SerializeField] private TMP_Text requiredEvidenceProgressText;
     [SerializeField] private Image[] requiredEvidenceIndicators;
@@ -30,10 +31,15 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private EvidenceManager subscribedManager;
     private Coroutine managerSubscribeRoutine;
+    private bool unlockPromptDismissed;
 
     private void Awake()
     {
         ResolveReferences();
+
+        // 시작 시에는 해금 모달을 표시하지 않는다.
+        if (startAreaRoot != null)
+            startAreaRoot.SetActive(false);
     }
 
     private void OnEnable()
@@ -110,7 +116,10 @@ public sealed class DeductionStartUIController : MonoBehaviour
         }
 
         if (!deductionUIController.IsPanelOpen)
+        {
+            unlockPromptDismissed = true;
             deductionUIController.OpenPanel();
+        }
 
         RefreshView();
     }
@@ -149,7 +158,14 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private void HandleDeductionUnlocked()
     {
-        // 해금은 버튼만 활성화하며 추리판을 자동으로 열지 않는다.
+        // 해금 모달만 표시하며 추리판은 사용자가 버튼을 눌렀을 때 연다.
+        unlockPromptDismissed = false;
+        RefreshView();
+    }
+
+    public void ContinueInvestigation()
+    {
+        unlockPromptDismissed = true;
         RefreshView();
     }
 
@@ -175,7 +191,10 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
         if (startAreaRoot != null)
         {
-            bool shouldShowStartArea = !isPanelOpen && !hasResult;
+            bool shouldShowStartArea = hasAllRequiredEvidence &&
+                                       !unlockPromptDismissed &&
+                                       !isPanelOpen &&
+                                       !hasResult;
             if (startAreaRoot.activeSelf != shouldShowStartArea)
                 startAreaRoot.SetActive(shouldShowStartArea);
         }
@@ -219,12 +238,18 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
         if (deductionStartButton != null)
             deductionStartButton.onClick.AddListener(TryOpenDeductionPanel);
+
+        if (continueInvestigationButton != null)
+            continueInvestigationButton.onClick.AddListener(ContinueInvestigation);
     }
 
     private void UnregisterButtonListener()
     {
         if (deductionStartButton != null)
             deductionStartButton.onClick.RemoveListener(TryOpenDeductionPanel);
+
+        if (continueInvestigationButton != null)
+            continueInvestigationButton.onClick.RemoveListener(ContinueInvestigation);
     }
 
     private void SubscribeToUIEvents()

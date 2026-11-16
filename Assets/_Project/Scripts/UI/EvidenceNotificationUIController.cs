@@ -6,8 +6,9 @@ using UnityEngine.UI;
 
 public class EvidenceNotificationUIController : MonoBehaviour
 {
-    private const string NotificationTitle = "새로운 증거 확보";
-    private const string NotificationMessage = "증거가 수사 기록에 등록되었습니다.";
+    private const string NotificationTitle = "증거 확보 완료";
+    private const string NotificationMessage = "수집한 증거가 수사 기록에 기록되었습니다.";
+    private const int RequiredEvidenceTarget = 4;
 
     [Header("UI References")]
     [SerializeField] private GameObject notificationPanel;
@@ -15,6 +16,8 @@ public class EvidenceNotificationUIController : MonoBehaviour
     [SerializeField] private TMP_Text evidenceIdText;
     [SerializeField] private TMP_Text evidenceNameText;
     [SerializeField] private TMP_Text notificationMessageText;
+    [SerializeField] private TMP_Text requiredProgressText;
+    [SerializeField] private Image requiredProgressFill;
 
     [Header("Notification Settings")]
     [Min(0.1f)]
@@ -121,10 +124,21 @@ public class EvidenceNotificationUIController : MonoBehaviour
         SetStaticText();
 
         if (evidenceIdText != null)
-            evidenceIdText.text = evidence.Id;
+            evidenceIdText.text = $"{evidence.Id}  ·";
 
         if (evidenceNameText != null)
             evidenceNameText.text = evidence.EvidenceName;
+
+        int requiredCount = EvidenceManager.Instance != null
+            ? EvidenceManager.Instance.RequiredCount
+            : 0;
+
+        if (requiredProgressText != null)
+            requiredProgressText.text = $"{requiredCount} / {RequiredEvidenceTarget}";
+
+        if (requiredProgressFill != null)
+            requiredProgressFill.fillAmount = Mathf.Clamp01(
+                requiredCount / (float)RequiredEvidenceTarget);
 
         SetPanelVisible(true);
         Debug.Log(
@@ -205,6 +219,7 @@ public class EvidenceNotificationUIController : MonoBehaviour
         SetTextVisible(evidenceIdText);
         SetTextVisible(evidenceNameText);
         SetTextVisible(notificationMessageText);
+        SetTextVisible(requiredProgressText);
     }
 
     private static void SetTextVisible(TMP_Text text)
