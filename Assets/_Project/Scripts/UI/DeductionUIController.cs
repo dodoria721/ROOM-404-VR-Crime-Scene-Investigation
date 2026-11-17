@@ -13,6 +13,7 @@ public sealed class DeductionUIController : MonoBehaviour
     [Tooltip("Keep this controller on an always-active Canvas root, not on this panel.")]
     [SerializeField] private GameObject deductionPanel;
     [SerializeField] private TMP_Text statusText;
+    [SerializeField] private TMP_Text currentSelectionText;
 
     [Header("Suspect Cards")]
     [SerializeField] private Button kimMinSuButton;
@@ -26,7 +27,20 @@ public sealed class DeductionUIController : MonoBehaviour
     [SerializeField] private Button reviewButton;
     [SerializeField] private Button confirmButton;
 
-    [Header("Result")]
+    [Header("Confirmation Popup")]
+    [SerializeField] private GameObject confirmationPanel;
+    [SerializeField] private Button confirmationCancelButton;
+    [SerializeField] private Button confirmationAcceptButton;
+    [SerializeField] private Image confirmationPortrait;
+    [SerializeField] private TMP_Text confirmationQuestionText;
+    [SerializeField] private TMP_Text confirmationSuspectText;
+    [SerializeField] private TMP_Text confirmationRoleText;
+    [SerializeField] private TMP_Text confirmationClueText;
+    [SerializeField] private Sprite kimMinSuPortrait;
+    [SerializeField] private Sprite leeSeoYeonPortrait;
+    [SerializeField] private Sprite parkJinHoPortrait;
+
+    [Header("Legacy Result UI")]
     [SerializeField] private GameObject resultPanel;
     [SerializeField] private Image resultBackground;
     [SerializeField] private TMP_Text resultIconText;
@@ -35,11 +49,7 @@ public sealed class DeductionUIController : MonoBehaviour
     [SerializeField] private TMP_Text resultSupportText;
 
     [Header("Visual Settings")]
-    [SerializeField] private Color selectedOutlineColor = new(1f, 0.78f, 0.18f, 1f);
-    [SerializeField] private Color successColor = new(0.57f, 0.88f, 0.72f, 1f);
-    [SerializeField] private Color failureColor = new(1f, 0.58f, 0.52f, 1f);
-    [SerializeField] private Color successBackgroundColor = new(0.08f, 0.17f, 0.14f, 0.98f);
-    [SerializeField] private Color failureBackgroundColor = new(0.24f, 0.07f, 0.06f, 0.98f);
+    [SerializeField] private Color selectedOutlineColor = new(0.82f, 0.70f, 0.43f, 1f);
 
     private bool hasSelection;
     private SuspectId selectedSuspect;
@@ -56,8 +66,8 @@ public sealed class DeductionUIController : MonoBehaviour
     private void Awake()
     {
         ResolveControllers();
-        ResolveVisualReferences();
         SetPanelVisible(false);
+        SetConfirmationVisible(false);
         SetResultVisible(false);
         RefreshSelectionVisuals();
     }
@@ -65,7 +75,6 @@ public sealed class DeductionUIController : MonoBehaviour
     private void OnEnable()
     {
         ResolveControllers();
-        ResolveVisualReferences();
         RegisterButtonListeners();
         SubscribeToEvents();
         SynchronizeState();
@@ -83,11 +92,6 @@ public sealed class DeductionUIController : MonoBehaviour
         UnsubscribeFromEvents();
     }
 
-    private void Reset()
-    {
-        ResolveControllers();
-    }
-
     [ContextMenu("Debug / Open Deduction Panel")]
     public void OpenPanel()
     {
@@ -98,7 +102,6 @@ public sealed class DeductionUIController : MonoBehaviour
         }
 
         ResolveControllers();
-
         if (deductionController == null)
         {
             Debug.LogError("[사건 추리 UI] DeductionController가 연결되지 않았습니다.", this);
@@ -107,107 +110,105 @@ public sealed class DeductionUIController : MonoBehaviour
 
         if (!deductionController.IsDeductionAvailable)
         {
-            Debug.Log("[사건 추리 UI] 필수 증거가 부족하여 사건 추리 패널을 열 수 없습니다.", this);
+            Debug.Log("[사건 추리 UI] 필수 증거가 부족하여 추리 패널을 열 수 없습니다.", this);
             return;
         }
 
         SetPanelVisible(true);
+        SetConfirmationVisible(false);
         SynchronizeState();
     }
 
     public void ClosePanel()
     {
+        SetConfirmationVisible(false);
         SetPanelVisible(false);
-
         if (resultController == null || !resultController.HasResult)
             ClearPreviewSelection();
     }
 
-    public void SelectKimMinSu()
-    {
-        SetPreviewSelection(SuspectId.KimMinSu);
-    }
+    public void SelectKimMinSu() => SetPreviewSelection(SuspectId.KimMinSu);
+    public void SelectLeeSeoYeon() => SetPreviewSelection(SuspectId.LeeSeoYeon);
+    public void SelectParkJinHo() => SetPreviewSelection(SuspectId.ParkJinHo);
 
-    public void SelectLeeSeoYeon()
-    {
-        SetPreviewSelection(SuspectId.LeeSeoYeon);
-    }
-
-    public void SelectParkJinHo()
-    {
-        SetPreviewSelection(SuspectId.ParkJinHo);
-    }
-
+    // 기존 공개 API를 유지한다. 이제 이 단계에서는 판정하지 않고 확인 팝업만 연다.
     public void ConfirmSelection()
+    {
+        if (!CanConfirmSelection())
+            return;
+
+        PopulateConfirmation();
+        SetConfirmationVisible(true);
+        RefreshInteractableState();
+    }
+
+    public void CancelConfirmation()
     {
         if (confirmationInProgress)
             return;
+        SetConfirmationVisible(false);
+        RefreshInteractableState();
+    }
 
-        ResolveControllers();
-
-        if (deductionController == null || resultController == null)
-        {
-            SetStatus("추리 시스템 연결을 확인해 주세요.");
-            Debug.LogError("[사건 추리 UI] DeductionController 또는 ResultController가 연결되지 않았습니다.", this);
+    // 확인 팝업의 "예, 지목합니다" 버튼만 최종 판정을 요청한다.
+    public void ConfirmAccusation()
+    {
+        if (confirmationInProgress || !IsConfirmationVisible() || !CanConfirmSelection())
             return;
-        }
-
-        if (!deductionController.IsDeductionAvailable)
-        {
-            SetStatus("필수 증거를 모두 수집해야 지목할 수 있습니다.");
-            Debug.Log("[사건 추리 UI] 추리가 잠겨 있어 지목을 차단했습니다.", this);
-            RefreshInteractableState();
-            return;
-        }
-
-        if (!hasSelection)
-        {
-            SetStatus("먼저 용의자 한 명을 선택해 주세요.");
-            Debug.Log("[사건 추리 UI] 선택된 용의자가 없어 지목을 차단했습니다.", this);
-            RefreshInteractableState();
-            return;
-        }
-
-        if (resultController.HasResult)
-        {
-            SetStatus("최종 지목 결과가 이미 확정되었습니다.");
-            RefreshInteractableState();
-            return;
-        }
 
         confirmationInProgress = true;
         RefreshInteractableState();
-
         bool accepted = deductionController.TrySelectSuspect(selectedSuspect);
         if (!accepted && !resultController.HasResult)
         {
             confirmationInProgress = false;
-            SetStatus("지목을 처리하지 못했습니다. 추리 조건을 확인해 주세요.");
+            SetStatus("지목을 처리하지 못했습니다. 추리 조건을 다시 확인해 주세요.");
             RefreshInteractableState();
         }
     }
 
+    private bool CanConfirmSelection()
+    {
+        ResolveControllers();
+        if (deductionController == null || resultController == null)
+        {
+            SetStatus("추리 시스템 연결을 확인해 주세요.");
+            Debug.LogError("[사건 추리 UI] DeductionController 또는 ResultController가 연결되지 않았습니다.", this);
+            return false;
+        }
+        if (!deductionController.IsDeductionAvailable)
+        {
+            SetStatus("필수 증거를 모두 수집해야 지목할 수 있습니다.");
+            return false;
+        }
+        if (!hasSelection)
+        {
+            SetStatus("먼저 용의자 한 명을 선택해 주세요.");
+            return false;
+        }
+        if (resultController.HasResult)
+        {
+            SetStatus("최종 지목 결과가 이미 확정되었습니다.");
+            return false;
+        }
+        return true;
+    }
+
     private void SetPreviewSelection(SuspectId suspect)
     {
-        if (!IsPanelOpen || confirmationInProgress)
+        if (!IsPanelOpen || confirmationInProgress || IsConfirmationVisible())
             return;
-
         if (deductionController == null || !deductionController.IsDeductionAvailable)
         {
             SetStatus("필수 증거를 모두 수집해야 용의자를 선택할 수 있습니다.");
             return;
         }
-
         if (resultController != null && resultController.HasResult)
-        {
-            SetStatus("최종 지목 결과가 이미 확정되었습니다.");
             return;
-        }
 
         hasSelection = true;
         selectedSuspect = suspect;
-        SetResultVisible(false);
-        SetStatus($"{GetSuspectDisplayName(suspect)} 선택 — 지목 버튼을 눌러 확정하세요.");
+        SetStatus($"{GetSuspectDisplayName(suspect)} 선택 · 결론 제출 전까지 변경할 수 있습니다.");
         RefreshSelectionVisuals();
         RefreshInteractableState();
         SuspectPreviewChanged?.Invoke(suspect);
@@ -217,18 +218,30 @@ public sealed class DeductionUIController : MonoBehaviour
     {
         hasSelection = false;
         confirmationInProgress = false;
+        SetConfirmationVisible(false);
         RefreshSelectionVisuals();
         RefreshInteractableState();
     }
 
-    private void HandleDeductionAvailabilityChanged(bool isAvailable)
+    private void PopulateConfirmation()
     {
-        if (!isAvailable && IsPanelOpen)
-            SetPanelVisible(false);
+        string name = GetSuspectDisplayName(selectedSuspect);
+        if (confirmationQuestionText != null)
+            confirmationQuestionText.text = $"{name}을(를) 범인으로 지목하시겠습니까?";
+        if (confirmationSuspectText != null)
+            confirmationSuspectText.text = $"{name}   /   용의자 {GetSuspectCode(selectedSuspect)}";
+        if (confirmationRoleText != null)
+            confirmationRoleText.text = GetSuspectRole(selectedSuspect);
+        if (confirmationClueText != null)
+            confirmationClueText.text = GetSuspectClue(selectedSuspect);
+        if (confirmationPortrait != null)
+            confirmationPortrait.sprite = GetSuspectPortrait(selectedSuspect);
+    }
 
-        SetStatus(isAvailable
-            ? "수집한 증거와 용의자 정보를 비교해 최종 범인을 지목하세요."
-            : "필수 증거 4개를 모두 수집해야 사건 추리를 시작할 수 있습니다.");
+    private void HandleDeductionAvailabilityChanged(bool available)
+    {
+        if (!available && IsPanelOpen)
+            ClosePanel();
         RefreshInteractableState();
     }
 
@@ -237,66 +250,29 @@ public sealed class DeductionUIController : MonoBehaviour
         confirmationInProgress = false;
         hasSelection = true;
         selectedSuspect = suspect;
-        RefreshSelectionVisuals();
-        ShowResult(suspect, isSuccess);
-        RefreshInteractableState();
+        SetConfirmationVisible(false);
+        SetPanelVisible(false);
+        SetResultVisible(false);
         ResultPresented?.Invoke(suspect, isSuccess);
-    }
-
-    private void ShowResult(SuspectId suspect, bool isSuccess)
-    {
-        SetResultVisible(true);
-
-        if (resultBackground != null)
-            resultBackground.color = isSuccess ? successBackgroundColor : failureBackgroundColor;
-
-        if (resultIconText != null)
-        {
-            resultIconText.text = isSuccess ? "✓" : "✕";
-            resultIconText.color = isSuccess ? successColor : failureColor;
-        }
-
-        if (resultTitleText != null)
-        {
-            resultTitleText.text = isSuccess ? "사건 해결" : "추리 실패";
-            resultTitleText.color = Color.white;
-        }
-
-        if (resultDescriptionText != null)
-        {
-            string suspectName = GetSuspectDisplayName(suspect);
-            resultDescriptionText.text = $"{suspectName}을 지목했습니다.";
-        }
-
-        if (resultSupportText != null)
-        {
-            resultSupportText.text = isSuccess
-                ? "수집한 증거를 통해 사건의 진실을 밝혀냈습니다."
-                : "수집한 증거를 다시 검토해 보세요.";
-        }
-
-        SetStatus("최종 지목 결과가 확정되었습니다.");
     }
 
     private void SynchronizeState()
     {
-        bool isAvailable = deductionController != null && deductionController.IsDeductionAvailable;
-
+        bool available = deductionController != null && deductionController.IsDeductionAvailable;
         if (resultController != null && resultController.HasResult)
         {
             hasSelection = true;
             selectedSuspect = resultController.SelectedSuspect;
             confirmationInProgress = false;
-            ShowResult(resultController.SelectedSuspect, resultController.IsSuccess);
+            SetConfirmationVisible(false);
         }
         else
         {
-            SetResultVisible(false);
-            SetStatus(isAvailable
-                ? "수집한 증거와 용의자 정보를 비교해 최종 범인을 지목하세요."
+            SetStatus(available
+                ? "용의자를 선택하면 최종 결론 제출 버튼이 활성화됩니다."
                 : "필수 증거 4개를 모두 수집해야 사건 추리를 시작할 수 있습니다.");
         }
-
+        SetResultVisible(false);
         RefreshSelectionVisuals();
         RefreshInteractableState();
     }
@@ -306,37 +282,33 @@ public sealed class DeductionUIController : MonoBehaviour
         SetOutlineSelected(kimMinSuSelectionOutline, hasSelection && selectedSuspect == SuspectId.KimMinSu);
         SetOutlineSelected(leeSeoYeonSelectionOutline, hasSelection && selectedSuspect == SuspectId.LeeSeoYeon);
         SetOutlineSelected(parkJinHoSelectionOutline, hasSelection && selectedSuspect == SuspectId.ParkJinHo);
+        if (currentSelectionText != null)
+            currentSelectionText.text = hasSelection ? GetSuspectDisplayName(selectedSuspect) : "없음";
     }
 
     private void SetOutlineSelected(Outline outline, bool selected)
     {
         if (outline == null)
             return;
-
         outline.effectColor = selectedOutlineColor;
+        outline.effectDistance = new Vector2(4f, -4f);
         outline.enabled = selected;
     }
 
     private void RefreshInteractableState()
     {
-        bool isAvailable = deductionController != null && deductionController.IsDeductionAvailable;
+        bool available = deductionController != null && deductionController.IsDeductionAvailable;
         bool hasResult = resultController != null && resultController.HasResult;
-        bool allowCardInput = IsPanelOpen && isAvailable && !hasResult && !confirmationInProgress;
+        bool popup = IsConfirmationVisible();
+        bool allowCards = IsPanelOpen && available && !hasResult && !confirmationInProgress && !popup;
 
-        if (kimMinSuButton != null)
-            kimMinSuButton.interactable = allowCardInput;
-
-        if (leeSeoYeonButton != null)
-            leeSeoYeonButton.interactable = allowCardInput;
-
-        if (parkJinHoButton != null)
-            parkJinHoButton.interactable = allowCardInput;
-
-        if (confirmButton != null)
-            confirmButton.interactable = allowCardInput && hasSelection;
-
-        if (reviewButton != null)
-            reviewButton.interactable = IsPanelOpen;
+        if (kimMinSuButton != null) kimMinSuButton.interactable = allowCards;
+        if (leeSeoYeonButton != null) leeSeoYeonButton.interactable = allowCards;
+        if (parkJinHoButton != null) parkJinHoButton.interactable = allowCards;
+        if (confirmButton != null) confirmButton.interactable = allowCards && hasSelection;
+        if (reviewButton != null) reviewButton.interactable = IsPanelOpen && !popup;
+        if (confirmationCancelButton != null) confirmationCancelButton.interactable = popup && !confirmationInProgress;
+        if (confirmationAcceptButton != null) confirmationAcceptButton.interactable = popup && !confirmationInProgress;
     }
 
     private void SubscribeToEvents()
@@ -346,7 +318,6 @@ public sealed class DeductionUIController : MonoBehaviour
             deductionController.DeductionAvailabilityChanged -= HandleDeductionAvailabilityChanged;
             deductionController.DeductionAvailabilityChanged += HandleDeductionAvailabilityChanged;
         }
-
         if (resultController != null)
         {
             resultController.ResultDetermined -= HandleResultDetermined;
@@ -354,66 +325,43 @@ public sealed class DeductionUIController : MonoBehaviour
         }
     }
 
-    private void RegisterButtonListeners()
-    {
-        UnregisterButtonListeners();
-
-        if (kimMinSuButton != null)
-            kimMinSuButton.onClick.AddListener(SelectKimMinSu);
-
-        if (leeSeoYeonButton != null)
-            leeSeoYeonButton.onClick.AddListener(SelectLeeSeoYeon);
-
-        if (parkJinHoButton != null)
-            parkJinHoButton.onClick.AddListener(SelectParkJinHo);
-
-        if (reviewButton != null)
-            reviewButton.onClick.AddListener(ClosePanel);
-
-        if (confirmButton != null)
-            confirmButton.onClick.AddListener(ConfirmSelection);
-    }
-
-    private void UnregisterButtonListeners()
-    {
-        if (kimMinSuButton != null)
-            kimMinSuButton.onClick.RemoveListener(SelectKimMinSu);
-
-        if (leeSeoYeonButton != null)
-            leeSeoYeonButton.onClick.RemoveListener(SelectLeeSeoYeon);
-
-        if (parkJinHoButton != null)
-            parkJinHoButton.onClick.RemoveListener(SelectParkJinHo);
-
-        if (reviewButton != null)
-            reviewButton.onClick.RemoveListener(ClosePanel);
-
-        if (confirmButton != null)
-            confirmButton.onClick.RemoveListener(ConfirmSelection);
-    }
-
     private void UnsubscribeFromEvents()
     {
         if (deductionController != null)
             deductionController.DeductionAvailabilityChanged -= HandleDeductionAvailabilityChanged;
-
         if (resultController != null)
             resultController.ResultDetermined -= HandleResultDetermined;
+    }
+
+    private void RegisterButtonListeners()
+    {
+        UnregisterButtonListeners();
+        if (kimMinSuButton != null) kimMinSuButton.onClick.AddListener(SelectKimMinSu);
+        if (leeSeoYeonButton != null) leeSeoYeonButton.onClick.AddListener(SelectLeeSeoYeon);
+        if (parkJinHoButton != null) parkJinHoButton.onClick.AddListener(SelectParkJinHo);
+        if (reviewButton != null) reviewButton.onClick.AddListener(ClosePanel);
+        if (confirmButton != null) confirmButton.onClick.AddListener(ConfirmSelection);
+        if (confirmationCancelButton != null) confirmationCancelButton.onClick.AddListener(CancelConfirmation);
+        if (confirmationAcceptButton != null) confirmationAcceptButton.onClick.AddListener(ConfirmAccusation);
+    }
+
+    private void UnregisterButtonListeners()
+    {
+        if (kimMinSuButton != null) kimMinSuButton.onClick.RemoveListener(SelectKimMinSu);
+        if (leeSeoYeonButton != null) leeSeoYeonButton.onClick.RemoveListener(SelectLeeSeoYeon);
+        if (parkJinHoButton != null) parkJinHoButton.onClick.RemoveListener(SelectParkJinHo);
+        if (reviewButton != null) reviewButton.onClick.RemoveListener(ClosePanel);
+        if (confirmButton != null) confirmButton.onClick.RemoveListener(ConfirmSelection);
+        if (confirmationCancelButton != null) confirmationCancelButton.onClick.RemoveListener(CancelConfirmation);
+        if (confirmationAcceptButton != null) confirmationAcceptButton.onClick.RemoveListener(ConfirmAccusation);
     }
 
     private void ResolveControllers()
     {
         if (deductionController == null)
             deductionController = GetComponentInParent<DeductionController>(true);
-
         if (resultController == null)
             resultController = GetComponentInParent<ResultController>(true);
-    }
-
-    private void ResolveVisualReferences()
-    {
-        if (resultBackground == null && resultPanel != null)
-            resultBackground = resultPanel.GetComponent<Image>();
     }
 
     private void SetPanelVisible(bool visible)
@@ -424,9 +372,16 @@ public sealed class DeductionUIController : MonoBehaviour
             deductionPanel.SetActive(visible);
             PanelVisibilityChanged?.Invoke(visible);
         }
-
         RefreshInteractableState();
     }
+
+    private void SetConfirmationVisible(bool visible)
+    {
+        if (confirmationPanel != null && confirmationPanel.activeSelf != visible)
+            confirmationPanel.SetActive(visible);
+    }
+
+    private bool IsConfirmationVisible() => confirmationPanel != null && confirmationPanel.activeSelf;
 
     private void SetResultVisible(bool visible)
     {
@@ -440,14 +395,43 @@ public sealed class DeductionUIController : MonoBehaviour
             statusText.text = message;
     }
 
-    private static string GetSuspectDisplayName(SuspectId suspect)
+    private Sprite GetSuspectPortrait(SuspectId suspect) => suspect switch
     {
-        return suspect switch
-        {
-            SuspectId.KimMinSu => "김민수",
-            SuspectId.LeeSeoYeon => "이서연",
-            SuspectId.ParkJinHo => "박진호",
-            _ => suspect.ToString()
-        };
-    }
+        SuspectId.KimMinSu => kimMinSuPortrait,
+        SuspectId.LeeSeoYeon => leeSeoYeonPortrait,
+        SuspectId.ParkJinHo => parkJinHoPortrait,
+        _ => null
+    };
+
+    private static string GetSuspectDisplayName(SuspectId suspect) => suspect switch
+    {
+        SuspectId.KimMinSu => "김민수",
+        SuspectId.LeeSeoYeon => "이서연",
+        SuspectId.ParkJinHo => "박진호",
+        _ => suspect.ToString()
+    };
+
+    private static string GetSuspectCode(SuspectId suspect) => suspect switch
+    {
+        SuspectId.KimMinSu => "A",
+        SuspectId.LeeSeoYeon => "B",
+        SuspectId.ParkJinHo => "C",
+        _ => "-"
+    };
+
+    private static string GetSuspectRole(SuspectId suspect) => suspect switch
+    {
+        SuspectId.KimMinSu => "생명공학 연구원",
+        SuspectId.LeeSeoYeon => "약학 연구원",
+        SuspectId.ParkJinHo => "연구 총괄 교수",
+        _ => string.Empty
+    };
+
+    private static string GetSuspectClue(SuspectId suspect) => suspect switch
+    {
+        SuspectId.KimMinSu => "연구 성과 및 피해자와의 갈등 정황",
+        SuspectId.LeeSeoYeon => "과거 실험 기록 및 연구 보고서 관련 정황",
+        SuspectId.ParkJinHo => "연구비 집행 및 연구실 운영 관련 정황",
+        _ => string.Empty
+    };
 }
