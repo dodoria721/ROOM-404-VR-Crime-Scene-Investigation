@@ -25,7 +25,7 @@ public static class NotebookPageSetupEditor
     static TMP_FontAsset font;
     static Material uiMaterial, textMaterial;
     static Texture2D victim, autopsy, fingerprint, e01, e02, e03, locked;
-    static Texture2D[] suspects;
+    static Texture2D[] suspects, evidenceDetailCards;
 
     [MenuItem("ROOM 404/UI/Configure Notebook Pages")]
     public static void ConfigureNotebookPages()
@@ -217,7 +217,7 @@ public static class NotebookPageSetupEditor
         Border(imageCard.gameObject, "C19C58", 1.3f);
         TMP_Text detailId = Text("EvidenceId", imageCard.rectTransform, 18, 10, 300, 30,
             string.Empty, 17, "D3B77F", FontStyles.Normal);
-        RawImage detailImage = Raw("EvidenceImage", imageCard.rectTransform, 29, 50, 282, 208, e01);
+        RawImage detailImage = Raw("EvidenceImage", imageCard.rectTransform, 0, 0, 340, 320, evidenceDetailCards[0]);
         TMP_Text fallback = Text("EvidenceFallbackIcon", imageCard.rectTransform, 80, 65, 180, 160,
             "✓", 96, "D3B77F", FontStyles.Bold);
         fallback.alignment = TextAlignmentOptions.Center;
@@ -226,28 +226,40 @@ public static class NotebookPageSetupEditor
         Text("ImageFooter", imageCard.rectTransform, 18, 292, 305, 23,
             "CASE 404   •   EVIDENCE FILE", 14, "B8C6C7", FontStyles.Normal).alignment = TextAlignmentOptions.Center;
 
+        // The exported asset is the complete Figma card, so keep it above the
+        // legacy generated caption children and avoid duplicated text.
+        detailImage.transform.SetAsLastSibling();
+
         Image metadata = Image("DetailMetadata", detail, 464, 188, 536, 320, "EFE4CF");
         Border(metadata.gameObject, "C8B99B", 1.3f);
         Text("MetadataTitle", metadata.rectTransform, 22, 12, 300, 42,
             "증거물 개요", 28, "26343C", FontStyles.Bold);
         Image("MetadataAccent", metadata.rectTransform, 22, 55, 488, 2, "BA9C63");
-        TMP_Text detailMetadataId = AddDetailRow(metadata.rectTransform, 0, "증거 ID");
-        TMP_Text detailType = AddDetailRow(metadata.rectTransform, 1, "증거 구분");
-        TMP_Text detailMetadataStatus = AddDetailRow(metadata.rectTransform, 2, "등록 상태");
+        TMP_Text[] detailMetadataValues =
+        {
+            AddDetailRow(metadata.rectTransform, 0, "발견 장소"),
+            AddDetailRow(metadata.rectTransform, 1, "자료 유형"),
+            AddDetailRow(metadata.rectTransform, 2, "관련 인물"),
+            AddDetailRow(metadata.rectTransform, 3, "관련 사건"),
+            AddDetailRow(metadata.rectTransform, 4, "기록 시점")
+        };
+        TMP_Text detailMetadataFooter = Text("MetadataFooter", metadata.rectTransform, 23, 280, 494, 27,
+            string.Empty, 15, "6A5941", FontStyles.Normal);
 
         Image description = Image("EvidenceDescriptionBlock", detail, 100, 523, 900, 178, "F0E4CD");
         Border(description.gameObject, "D0BE9F", 1.3f);
         Text("DescriptionTitle", description.rectTransform, 20, 10, 780, 36,
-            "확인된 증거 설명", 24, "26363D", FontStyles.Bold);
+            "확인된 핵심 내용", 24, "26363D", FontStyles.Bold);
         Image("DescriptionAccent", description.rectTransform, 19, 50, 5, 108, "C0A05F");
         TMP_Text detailDescription = Text("EvidenceDescription", description.rectTransform, 36, 52, 838, 106,
-            string.Empty, 21, "32424A", FontStyles.Normal);
+            string.Empty, 18, "32424A", FontStyles.Normal);
         detailDescription.overflowMode = TextOverflowModes.Ellipsis;
+        detailDescription.lineSpacing = 8;
 
         Image recordState = Image("DetailStatus", detail, 100, 716, 900, 55, "E8D7AF");
         Border(recordState.gameObject, "CEB276", 1.3f);
-        Text("Text", recordState.rectTransform, 14, 5, 865, 46,
-            "수사 기록   |   수집된 증거의 원본 설명을 표시합니다.", 20, "645132", FontStyles.Normal);
+        TMP_Text detailMemo = Text("Text", recordState.rectTransform, 14, 5, 865, 46,
+            string.Empty, 18, "645132", FontStyles.Normal);
 
         Image backTarget = Image("BackButton", detail, 100, 791, 328, 51, "30424B");
         backTarget.raycastTarget = true;
@@ -256,8 +268,9 @@ public static class NotebookPageSetupEditor
         backButton.targetGraphic = backTarget;
         Text("Label", backTarget.rectTransform, 10, 0, 308, 51,
             "←   증거 목록으로 돌아가기", 20, "F1E9D6", FontStyles.Bold).alignment = TextAlignmentOptions.Center;
-        Text("RecordIndex", detail, 873, 797, 126, 39,
-            "EVIDENCE / 06", 19, "817359", FontStyles.Normal).alignment = TextAlignmentOptions.TopRight;
+        TMP_Text detailPageNumber = Text("RecordIndex", detail, 873, 797, 126, 39,
+            "E01 / 06", 19, "817359", FontStyles.Normal);
+        detailPageNumber.alignment = TextAlignmentOptions.TopRight;
         detail.gameObject.SetActive(false);
 
         NotebookEvidencePageController controller = page.GetComponent<NotebookEvidencePageController>() ?? Undo.AddComponent<NotebookEvidencePageController>(page);
@@ -267,23 +280,26 @@ public static class NotebookPageSetupEditor
         Obj(so, "evidenceGrid", grid.gameObject); Obj(so, "evidenceDetailPanel", detail.gameObject);
         Obj(so, "pageNavigationRoot", pageNavigation); Array(so, "evidenceCardButtons", cardButtons);
         Obj(so, "backButton", backButton); Obj(so, "detailHeaderText", detailHeader);
-        Obj(so, "detailEvidenceIdText", detailId); Obj(so, "detailMetadataIdText", detailMetadataId);
+        Obj(so, "detailEvidenceIdText", detailId); Obj(so, "detailMetadataIdText", null);
         Obj(so, "detailEvidenceNameText", detailName);
-        Obj(so, "detailEvidenceTypeText", detailType); Obj(so, "detailDescriptionText", detailDescription);
-        Obj(so, "detailStatusText", detailStatus); Obj(so, "detailMetadataStatusText", detailMetadataStatus);
+        Obj(so, "detailEvidenceTypeText", null); Obj(so, "detailDescriptionText", detailDescription);
+        Obj(so, "detailStatusText", detailStatus); Obj(so, "detailMetadataStatusText", null);
         Obj(so, "detailEvidenceImage", detailImage);
         Obj(so, "detailFallbackIcon", fallback.gameObject);
-        Texture[] detailImages = { e01, e02, e03, null, null, null };
-        Array(so, "evidenceImages", detailImages);
+        Array(so, "evidenceImages", evidenceDetailCards);
+        Array(so, "detailMetadataValueTexts", detailMetadataValues);
+        Obj(so, "detailMetadataFooterText", detailMetadataFooter);
+        Obj(so, "detailMemoText", detailMemo);
+        Obj(so, "detailPageNumberText", detailPageNumber);
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static TMP_Text AddDetailRow(RectTransform parent, int index, string label)
     {
-        float y = 71 + index * 55;
-        if (index % 2 == 0) Image("RowBackground_" + index, parent, 22, y, 488, 45, "E5D8BF", .55f);
-        Text("RowLabel_" + index, parent, 34, y + 5, 118, 35, label, 18, "87765F", FontStyles.Normal);
-        TMP_Text value = Text("RowValue_" + index, parent, 164, y + 4, 334, 37,
+        float y = 71 + index * 39;
+        if (index % 2 == 0) Image("RowBackground_" + index, parent, 22, y, 488, 39, "E5D8BF", .55f);
+        Text("RowLabel_" + index, parent, 34, y + 2, 118, 35, label, 18, "87765F", FontStyles.Normal);
+        TMP_Text value = Text("RowValue_" + index, parent, 164, y + 1, 334, 37,
             string.Empty, 19, "28373E", FontStyles.Normal);
         return value;
     }
@@ -354,9 +370,16 @@ public static class NotebookPageSetupEditor
         victim = Tex("VictimPortrait.png"); autopsy = Tex("AutopsySketch.png"); fingerprint = Tex("FingerprintReference.png");
         suspects = new[] { Tex("Suspect_KimMinSu.png"), Tex("Suspect_LeeSeoYeon.png"), Tex("Suspect_ParkJinHo.png") };
         e01 = Tex("Evidence_E01.png"); e02 = Tex("Evidence_E02.png"); e03 = Tex("Evidence_E03.png"); locked = Tex("Evidence_Locked.png");
+        evidenceDetailCards = new[]
+        {
+            Tex("E01 · 증거 이미지 카드.png"), Tex("E02 · 증거 이미지 카드.png"),
+            Tex("E03 · 증거 이미지 카드.png"), Tex("E04 · 증거 이미지 카드.png"),
+            Tex("E05 · 증거 이미지 카드.png"), Tex("E06 · 증거 이미지 카드.png")
+        };
         if (layer < 0 || font == null || uiMaterial == null || textMaterial == null || victim == null ||
             autopsy == null || fingerprint == null || e01 == null || e02 == null || e03 == null || locked == null ||
-            suspects[0] == null || suspects[1] == null || suspects[2] == null)
+            suspects[0] == null || suspects[1] == null || suspects[2] == null ||
+            System.Array.Exists(evidenceDetailCards, card => card == null))
             throw new InvalidOperationException("수첩 UI Layer, 폰트, Material 또는 Figma PNG 자산이 누락되었습니다.");
     }
 
