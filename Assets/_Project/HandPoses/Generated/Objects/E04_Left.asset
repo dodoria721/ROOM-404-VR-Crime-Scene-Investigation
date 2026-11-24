@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05ee1158d65546299489484cf4dc5993, type: 3}
+  m_Name: E04_Left
+  m_EditorClassIdentifier: Assembly-CSharp::HandPoseData
+  handSide: 0
+  poseKind: 6
+  displayName: E04_Left
+  generationNotes: "E04 \uC5F0\uAD6C\uBE44 \uBB38\uC11C\uC6A9 \uC5C4\uC9C0\xB7\uAC80\uC9C0
+    \uC9D1\uAE30 \uC790\uC138. \uC790\uB3D9 \uC0DD\uC131 \uACB0\uACFC\uB294 \uBAA8\uB378\uBCC4
+    \uBBF8\uC138 \uC870\uC815\uC774 \uD544\uC694\uD55C \uCD08\uC548\uC785\uB2C8\uB2E4."
+  sourceObjectSize: {x: 0.46235085, y: 0.053429604, z: 0.57829857}
+  generatedDraft: 1
+  jointRotations:
+  - transformPath: Rig/radius_ulna/thumb_trapez
+    localRotation: {x: -0.27343357, y: -0.18632056, z: -0.32028225, w: 0.88765913}
+  - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta
+    localRotation: {x: 0.37763387, y: -0.23311357, z: 0.11359822, w: 0.8889023}
+  - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta/thumb_prox
+    localRotation: {x: 0.18631634, y: -0.26273972, z: -0.48729846, w: 0.8116621}
+  - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta/thumb_prox/thumb_dist
+    localRotation: {x: 0.058432404, y: -0.16923639, z: -0.18200964, w: 0.9668598}
+  - transformPath: Rig/radius_ulna/index_meta/index_prox
+    localRotation: {x: 0.18551852, y: 0.040732987, z: -0.14450707, w: 0.9711036}
+  - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd
+    localRotation: {x: 0.18690753, y: -0.006639067, z: -0.34069565, w: 0.9213843}
+  - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd/index_dist
+    localRotation: {x: 0.15687655, y: -0.008032787, z: -0.25355253, w: 0.95448285}
+  - transformPath: Rig/radius_ulna/midd_meta/midd_prox
+    localRotation: {x: 0.14344564, y: 0.05828453, z: -0.08319203, w: 0.9844315}
+  - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd
+    localRotation: {x: 0.0699059, y: -0.0049958955, z: -0.17286707, w: 0.9824487}
+  - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd/midd_dist
+    localRotation: {x: 0.02926372, y: -0.0026970208, z: -0.17045543, w: 0.9849274}
+  - transformPath: Rig/radius_ulna/ring_meta/ring_prox
+    localRotation: {x: 0.017244998, y: 0.035643466, z: -0.1443799, w: 0.9887301}
+  - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd
+    localRotation: {x: 0.016909987, y: 0.00009750266, z: -0.24496622, w: 0.96938443}
+  - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd/ring_dist
+    localRotation: {x: 0.021646105, y: 0.00040143222, z: -0.22717416, w: 0.97361374}
+  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox
+    localRotation: {x: -0.093260616, y: 0.028382704, z: -0.07760219, w: 0.99220735}
+  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd
+    localRotation: {x: -0.13526744, y: -0.09393716, z: -0.27402553, w: 0.9475175}
+  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd/pinky_dist
+    localRotation: {x: -0.053753506, y: -0.055168137, z: -0.21565558, w: 0.9734274}
