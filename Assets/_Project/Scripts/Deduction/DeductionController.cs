@@ -61,6 +61,14 @@ public sealed class DeductionController : MonoBehaviour
 
     public bool TrySelectSuspect(SuspectId suspect)
     {
+        Debug.LogWarning(
+            "[최종 추리] 사건 유형 없이 용의자만 제출할 수 없습니다. 사건 유형을 함께 전달하세요.",
+            this);
+        return false;
+    }
+
+    public bool TrySelectSuspect(CaseType caseType, SuspectId suspect)
+    {
         if (!Application.isPlaying)
         {
             Debug.LogWarning("[최종 추리] 용의자 선택 테스트는 Play Mode에서만 실행할 수 있습니다.", this);
@@ -83,6 +91,12 @@ public sealed class DeductionController : MonoBehaviour
             return false;
         }
 
+        if (!Enum.IsDefined(typeof(CaseType), caseType) || caseType == CaseType.None)
+        {
+            Debug.LogWarning($"[최종 추리] 유효한 사건 유형이 선택되지 않았습니다: {caseType}", this);
+            return false;
+        }
+
         if (!Enum.IsDefined(typeof(SuspectId), suspect))
         {
             Debug.LogWarning($"[최종 추리] 유효하지 않은 용의자 ID입니다: {suspect}", this);
@@ -102,7 +116,7 @@ public sealed class DeductionController : MonoBehaviour
             return false;
         }
 
-        return resultController.TryDetermineResult(suspect);
+        return resultController.TryDetermineResult(caseType, suspect);
     }
 
     private IEnumerator SubscribeWhenManagerIsReady()

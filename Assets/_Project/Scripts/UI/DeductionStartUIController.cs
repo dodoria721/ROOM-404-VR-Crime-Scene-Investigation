@@ -20,6 +20,7 @@ public sealed class DeductionStartUIController : MonoBehaviour
     [SerializeField] private Image[] requiredEvidenceIndicators;
 
     [Header("Existing Controllers")]
+    [SerializeField] private CaseTypeSelectionController caseTypeSelectionController;
     [SerializeField] private DeductionUIController deductionUIController;
     [SerializeField] private ResultController resultController;
 
@@ -108,19 +109,65 @@ public sealed class DeductionStartUIController : MonoBehaviour
             return;
         }
 
-        if (deductionUIController == null)
+        if (caseTypeSelectionController == null)
         {
-            Debug.LogError("[추리 시작 UI] DeductionUIController가 연결되지 않았습니다.", this);
+            Debug.LogError("[추리 시작 UI] CaseTypeSelectionController가 연결되지 않았습니다.", this);
             RefreshView();
             return;
         }
 
-        if (!deductionUIController.IsPanelOpen)
+        if (deductionUIController != null && deductionUIController.IsPanelOpen)
+            deductionUIController.ClosePanel();
+
+        unlockPromptDismissed = true;
+        caseTypeSelectionController.OpenPanel();
+
+        RefreshView();
+    }
+
+    private void HandleNextStepRequested(CaseType requestedType)
+    {
+        ResolveReferences();
+
+        if (caseTypeSelectionController == null ||
+            !caseTypeSelectionController.HasSelection ||
+            requestedType == CaseType.None ||
+            requestedType != caseTypeSelectionController.SelectedCaseType)
         {
-            unlockPromptDismissed = true;
-            deductionUIController.OpenPanel();
+            Debug.LogWarning("[추리 시작 UI] 유효한 사건 유형이 없어 다음 단계로 이동하지 않습니다.", this);
+            return;
         }
 
+        EvidenceManager manager = EvidenceManager.Instance;
+        if (manager == null || !manager.CanDeduce)
+        {
+            Debug.LogWarning("[추리 시작 UI] 추리 해금 조건이 충족되지 않았습니다.", this);
+            return;
+        }
+
+        if (resultController != null && resultController.HasResult)
+        {
+            Debug.Log("[추리 시작 UI] 결과가 이미 확정되어 용의자 선택 화면을 열지 않습니다.", this);
+            return;
+        }
+
+        if (deductionUIController == null)
+        {
+            Debug.LogError("[추리 시작 UI] DeductionUIController가 연결되지 않았습니다.", this);
+            return;
+        }
+
+        // 선택값은 CaseTypeSelectionController에 유지한 채 화면만 순서대로 전환한다.
+        caseTypeSelectionController.ClosePanel();
+        deductionUIController.OpenPanel();
+
+        if (!deductionUIController.IsPanelOpen)
+        {
+            Debug.LogWarning(
+                "[추리 시작 UI] 용의자 선택 화면을 열지 못해 사건 유형 화면으로 복귀합니다.",
+                this);
+            caseTypeSelectionController.OpenPanel();
+        }
         RefreshView();
     }
 
@@ -184,9 +231,14 @@ public sealed class DeductionStartUIController : MonoBehaviour
         EvidenceManager manager = EvidenceManager.Instance;
         bool hasManager = manager != null;
         bool hasAllRequiredEvidence = hasManager && manager.CanDeduce;
-        bool isPanelOpen = deductionUIController != null && deductionUIController.IsPanelOpen;
+        bool isCaseTypePanelOpen = caseTypeSelectionController != null &&
+                                   caseTypeSelectionController.IsPanelOpen;
+        bool isDeductionPanelOpen = deductionUIController != null && deductionUIController.IsPanelOpen;
+        bool isPanelOpen = isCaseTypePanelOpen || isDeductionPanelOpen;
         bool hasResult = resultController != null && resultController.HasResult;
-        bool hasRequiredReferences = deductionUIController != null && resultController != null;
+        bool hasRequiredReferences = caseTypeSelectionController != null &&
+                                     deductionUIController != null &&
+                                     resultController != null;
         bool canOpen = hasAllRequiredEvidence && !isPanelOpen && !hasResult && hasRequiredReferences;
 
         if (startAreaRoot != null)
@@ -254,6 +306,12 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private void SubscribeToUIEvents()
     {
+        if (caseTypeSelectionController != null)
+        {
+            caseTypeSelectionController.NextStepRequested -= HandleNextStepRequested;
+            caseTypeSelectionController.NextStepRequested += HandleNextStepRequested;
+        }
+
         if (deductionUIController != null)
         {
             deductionUIController.PanelVisibilityChanged -= HandlePanelVisibilityChanged;
@@ -269,6 +327,9 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private void UnsubscribeFromUIEvents()
     {
+        if (caseTypeSelectionController != null)
+            caseTypeSelectionController.NextStepRequested -= HandleNextStepRequested;
+
         if (deductionUIController != null)
             deductionUIController.PanelVisibilityChanged -= HandlePanelVisibilityChanged;
 
@@ -297,6 +358,10 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private void ResolveReferences()
     {
+        if (caseTypeSelectionController == null)
+            caseTypeSelectionController =
+                FindFirstObjectByType<CaseTypeSelectionController>(FindObjectsInactive.Include);
+
         if (deductionUIController == null)
             deductionUIController = GetComponentInParent<DeductionUIController>(true);
 

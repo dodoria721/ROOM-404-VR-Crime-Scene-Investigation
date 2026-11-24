@@ -10,20 +10,34 @@ public enum SuspectId
 
 public sealed class ResultController : MonoBehaviour
 {
+    private const CaseType CorrectCaseType = CaseType.ThirdPartyInvolvement;
     private const SuspectId CorrectSuspect = SuspectId.LeeSeoYeon;
 
     public event Action<SuspectId, bool> ResultDetermined;
 
     public bool HasResult { get; private set; }
+    public CaseType SelectedCaseType { get; private set; } = CaseType.None;
     public SuspectId SelectedSuspect { get; private set; }
     public bool IsSuccess { get; private set; }
 
-    // 범인 선택 진입점은 DeductionController로 제한해 추리 잠금 조건을 우회하지 않게 한다.
+    // 기존 호출자의 컴파일 호환성은 유지하되 사건 유형을 우회한 결과 확정은 차단한다.
     internal bool TryDetermineResult(SuspectId suspect)
+    {
+        Debug.LogWarning("[최종 추리] 사건 유형 없이 결과를 확정할 수 없습니다.", this);
+        return false;
+    }
+
+    internal bool TryDetermineResult(CaseType caseType, SuspectId suspect)
     {
         if (HasResult)
         {
-            Debug.Log("[최종 추리] 결과가 이미 확정되어 추가 선택을 무시합니다.", this);
+            Debug.Log("[최종 추리] 결과가 이미 확정되어 추가 제출을 무시합니다.", this);
+            return false;
+        }
+
+        if (!Enum.IsDefined(typeof(CaseType), caseType) || caseType == CaseType.None)
+        {
+            Debug.LogWarning($"[최종 추리] 유효한 사건 유형이 선택되지 않았습니다: {caseType}", this);
             return false;
         }
 
@@ -33,17 +47,22 @@ public sealed class ResultController : MonoBehaviour
             return false;
         }
 
-        // 콜백에서 다시 선택을 시도해도 중복 판정되지 않도록 이벤트보다 상태를 먼저 확정한다.
+        SelectedCaseType = caseType;
         SelectedSuspect = suspect;
-        IsSuccess = suspect == CorrectSuspect;
+        IsSuccess = IsCorrectCombination(caseType, suspect);
         HasResult = true;
 
         Debug.Log(
-            $"[최종 추리] 선택: {GetDisplayName(suspect)}, 결과: {(IsSuccess ? "Success" : "Failure")}",
+            $"[최종 추리] 사건 유형: {caseType}, 용의자: {GetDisplayName(suspect)}, 결과: {(IsSuccess ? "Success" : "Failure")}",
             this);
 
         ResultDetermined?.Invoke(SelectedSuspect, IsSuccess);
         return true;
+    }
+
+    public static bool IsCorrectCombination(CaseType caseType, SuspectId suspect)
+    {
+        return caseType == CorrectCaseType && suspect == CorrectSuspect;
     }
 
     private static string GetDisplayName(SuspectId suspect)

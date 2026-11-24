@@ -6,6 +6,7 @@ using UnityEngine.UI;
 public sealed class DeductionUIController : MonoBehaviour
 {
     [Header("Game Logic")]
+    [SerializeField] private CaseTypeSelectionController caseTypeSelectionController;
     [SerializeField] private DeductionController deductionController;
     [SerializeField] private ResultController resultController;
 
@@ -158,7 +159,8 @@ public sealed class DeductionUIController : MonoBehaviour
 
         confirmationInProgress = true;
         RefreshInteractableState();
-        bool accepted = deductionController.TrySelectSuspect(selectedSuspect);
+        CaseType selectedCaseType = caseTypeSelectionController.SelectedCaseType;
+        bool accepted = deductionController.TrySelectSuspect(selectedCaseType, selectedSuspect);
         if (!accepted && !resultController.HasResult)
         {
             confirmationInProgress = false;
@@ -170,7 +172,7 @@ public sealed class DeductionUIController : MonoBehaviour
     private bool CanConfirmSelection()
     {
         ResolveControllers();
-        if (deductionController == null || resultController == null)
+        if (caseTypeSelectionController == null || deductionController == null || resultController == null)
         {
             SetStatus("추리 시스템 연결을 확인해 주세요.");
             Debug.LogError("[사건 추리 UI] DeductionController 또는 ResultController가 연결되지 않았습니다.", this);
@@ -184,6 +186,12 @@ public sealed class DeductionUIController : MonoBehaviour
         if (!hasSelection)
         {
             SetStatus("먼저 용의자 한 명을 선택해 주세요.");
+            return false;
+        }
+        if (!caseTypeSelectionController.HasSelection ||
+            caseTypeSelectionController.SelectedCaseType == CaseType.None)
+        {
+            SetStatus("먼저 사건 유형을 선택해 주세요.");
             return false;
         }
         if (resultController.HasResult)
@@ -358,6 +366,9 @@ public sealed class DeductionUIController : MonoBehaviour
 
     private void ResolveControllers()
     {
+        if (caseTypeSelectionController == null)
+            caseTypeSelectionController =
+                FindFirstObjectByType<CaseTypeSelectionController>(FindObjectsInactive.Include);
         if (deductionController == null)
             deductionController = GetComponentInParent<DeductionController>(true);
         if (resultController == null)
