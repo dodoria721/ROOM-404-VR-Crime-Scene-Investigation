@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -59,6 +60,9 @@ public sealed class CaseTypeSelectionController : MonoBehaviour
     public event Action<CaseType> SelectionChanged;
     public event Action<CaseType> NextStepRequested;
 
+    private EvidenceManager subscribedManager;
+    private Coroutine evidenceSubscriptionRoutine;
+
     public bool HasSelection => selectedCaseType != CaseType.None;
     public CaseType SelectedCaseType => selectedCaseType;
     public bool IsPanelOpen => caseTypeRoot != null && caseTypeRoot.activeInHierarchy;
@@ -78,20 +82,19 @@ public sealed class CaseTypeSelectionController : MonoBehaviour
     private void OnEnable()
     {
         RegisterListeners();
-        SubscribeEvidenceEvents();
-        RefreshRequiredEvidence();
-    }
-
-    private void Start()
-    {
-        // EvidenceManager가 이 컴포넌트보다 늦게 Awake되는 Scene 구성도 지원한다.
-        SubscribeEvidenceEvents();
+        if (!TrySubscribeEvidenceEvents() && evidenceSubscriptionRoutine == null)
+            evidenceSubscriptionRoutine = StartCoroutine(WaitForEvidenceManager());
         RefreshRequiredEvidence();
     }
 
     private void OnDisable()
     {
         UnregisterListeners();
+        if (evidenceSubscriptionRoutine != null)
+        {
+            StopCoroutine(evidenceSubscriptionRoutine);
+            evidenceSubscriptionRoutine = null;
+        }
         UnsubscribeEvidenceEvents();
     }
 
@@ -213,21 +216,38 @@ public sealed class CaseTypeSelectionController : MonoBehaviour
             button.onClick.RemoveListener(action);
     }
 
-    private void SubscribeEvidenceEvents()
+    private bool TrySubscribeEvidenceEvents()
     {
         EvidenceManager manager = EvidenceManager.Instance;
         if (manager == null)
-            return;
+            return false;
 
-        manager.EvidenceRegistered -= OnEvidenceRegistered;
-        manager.EvidenceRegistered += OnEvidenceRegistered;
+        if (subscribedManager != manager)
+        {
+            UnsubscribeEvidenceEvents();
+            subscribedManager = manager;
+            subscribedManager.EvidenceRegistered += OnEvidenceRegistered;
+        }
+
+        return true;
+    }
+
+    private IEnumerator WaitForEvidenceManager()
+    {
+        do
+            yield return null;
+        while (!TrySubscribeEvidenceEvents());
+
+        evidenceSubscriptionRoutine = null;
+        RefreshRequiredEvidence();
     }
 
     private void UnsubscribeEvidenceEvents()
     {
-        EvidenceManager manager = EvidenceManager.Instance;
-        if (manager != null)
-            manager.EvidenceRegistered -= OnEvidenceRegistered;
+        if (subscribedManager is not null)
+            subscribedManager.EvidenceRegistered -= OnEvidenceRegistered;
+
+        subscribedManager = null;
     }
 
     private void OnEvidenceRegistered(EvidenceData _)

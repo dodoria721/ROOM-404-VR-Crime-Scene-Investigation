@@ -271,16 +271,8 @@ public static class XRUIOverlaySetupEditor
 
     private static GameObject FindNamedGameObject(Scene scene, string objectName)
     {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (item.name == objectName)
-                    return item.gameObject;
-            }
-        }
-
-        throw new InvalidOperationException($"VR_Test scene object was not found: {objectName}");
+        return EditorUIUtility.FindSceneObject(scene, objectName)
+            ?? throw new InvalidOperationException($"VR_Test scene object was not found: {objectName}");
     }
 
     private static Camera GetOrCreateOverlayCamera(Camera mainCamera, string cameraName)

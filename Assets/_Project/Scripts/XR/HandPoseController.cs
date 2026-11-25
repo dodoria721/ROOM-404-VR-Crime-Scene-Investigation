@@ -113,8 +113,17 @@ public sealed class HandPoseController : MonoBehaviour
         private Quaternion pointIntermediate;
         private Quaternion pointDistal;
 
+        private bool hasCachedRotation;
+        private float cachedInputAmount;
+        private float cachedPointWeight;
+        private Quaternion cachedMetacarpal;
+        private Quaternion cachedProximal;
+        private Quaternion cachedIntermediate;
+        private Quaternion cachedDistal;
+
         public void CaptureOpen()
         {
+            InvalidatePoseCache();
             Capture(metacarpal, ref openMetacarpal);
             Capture(proximal, ref openProximal);
             Capture(intermediate, ref openIntermediate);
@@ -123,6 +132,7 @@ public sealed class HandPoseController : MonoBehaviour
 
         public void CaptureClosed()
         {
+            InvalidatePoseCache();
             Capture(metacarpal, ref closedMetacarpal);
             Capture(proximal, ref closedProximal);
             Capture(intermediate, ref closedIntermediate);
@@ -131,6 +141,7 @@ public sealed class HandPoseController : MonoBehaviour
 
         public void CopyOpenToClosed()
         {
+            InvalidatePoseCache();
             closedMetacarpal = openMetacarpal;
             closedProximal = openProximal;
             closedIntermediate = openIntermediate;
@@ -139,6 +150,7 @@ public sealed class HandPoseController : MonoBehaviour
 
         public void SetClosedFromPose(Transform handRoot, HandPoseData pose)
         {
+            InvalidatePoseCache();
             SetFromPose(handRoot, pose, metacarpal, ref closedMetacarpal);
             SetFromPose(handRoot, pose, proximal, ref closedProximal);
             SetFromPose(handRoot, pose, intermediate, ref closedIntermediate);
@@ -147,6 +159,7 @@ public sealed class HandPoseController : MonoBehaviour
 
         public void CachePointPose(Transform handRoot, HandPoseData pose)
         {
+            InvalidatePoseCache();
             pointMetacarpal = openMetacarpal;
             pointProximal = openProximal;
             pointIntermediate = openIntermediate;
@@ -159,11 +172,28 @@ public sealed class HandPoseController : MonoBehaviour
 
         public void Apply(float inputAmount, float pointWeight)
         {
-            ApplyJoint(metacarpal, openMetacarpal, closedMetacarpal, inputAmount, pointMetacarpal, pointWeight);
-            ApplyJoint(proximal, openProximal, closedProximal, inputAmount, pointProximal, pointWeight);
-            ApplyJoint(intermediate, openIntermediate, closedIntermediate, inputAmount, pointIntermediate, pointWeight);
-            ApplyJoint(distal, openDistal, closedDistal, inputAmount, pointDistal, pointWeight);
+            // Compare the actual smoothed values, so small analog changes still update the pose.
+            bool recalculate = !hasCachedRotation ||
+                               cachedInputAmount != inputAmount ||
+                               cachedPointWeight != pointWeight;
+            ApplyJoint(metacarpal, openMetacarpal, closedMetacarpal, pointMetacarpal,
+                inputAmount, pointWeight, recalculate, ref cachedMetacarpal);
+            ApplyJoint(proximal, openProximal, closedProximal, pointProximal,
+                inputAmount, pointWeight, recalculate, ref cachedProximal);
+            ApplyJoint(intermediate, openIntermediate, closedIntermediate, pointIntermediate,
+                inputAmount, pointWeight, recalculate, ref cachedIntermediate);
+            ApplyJoint(distal, openDistal, closedDistal, pointDistal,
+                inputAmount, pointWeight, recalculate, ref cachedDistal);
+
+            if (recalculate)
+            {
+                cachedInputAmount = inputAmount;
+                cachedPointWeight = pointWeight;
+                hasCachedRotation = true;
+            }
         }
+
+        public void InvalidatePoseCache() => hasCachedRotation = false;
 
 #if UNITY_EDITOR
         public void PreviewAsset(Transform handRoot, HandPoseData pose, float amount, bool useCapturedClosed)
@@ -177,7 +207,8 @@ public sealed class HandPoseController : MonoBehaviour
             {
                 Quaternion closed = useCapturedClosed ? capturedClosed : open;
                 SetFromPose(handRoot, pose, joint, ref closed);
-                ApplyJoint(joint, open, closed, amount);
+                if (joint != null)
+                    joint.localRotation = Quaternion.Slerp(open, closed, amount);
             }
         }
 #endif
@@ -234,14 +265,19 @@ public sealed class HandPoseController : MonoBehaviour
         }
 
         private static void ApplyJoint(
-            Transform joint, Quaternion open, Quaternion closed, float inputAmount,
-            Quaternion point = default, float pointWeight = 0f)
+            Transform joint, Quaternion open, Quaternion closed, Quaternion point,
+            float inputAmount, float pointWeight, bool recalculate, ref Quaternion cachedRotation)
         {
-            if (joint != null)
+            if (joint == null)
+                return;
+
+            if (recalculate)
             {
                 Quaternion rotation = Quaternion.Slerp(open, closed, inputAmount);
-                joint.localRotation = pointWeight > 0f ? Quaternion.Slerp(rotation, point, pointWeight) : rotation;
+                cachedRotation = pointWeight > 0f ? Quaternion.Slerp(rotation, point, pointWeight) : rotation;
             }
+            // Keep LateUpdate authoritative if an Animator or another tool writes the bones.
+            joint.localRotation = cachedRotation;
         }
 
         private static void AddUnique(List<Transform> destination, Transform joint)
@@ -327,6 +363,7 @@ public sealed class HandPoseController : MonoBehaviour
 
     private void OnEnable()
     {
+        ForEachFinger(finger => finger.InvalidatePoseCache());
         currentGrip = 0f;
         currentTrigger = 0f;
         gripVelocity = 0f;
@@ -596,6 +633,7 @@ public sealed class HandPoseController : MonoBehaviour
 
     private void OnValidate()
     {
+        ForEachFinger(finger => finger?.InvalidatePoseCache());
         inputSmoothTime = Mathf.Max(0.001f, inputSmoothTime);
         if (palmNormalLocal.sqrMagnitude < 0.0001f)
             palmNormalLocal = Vector3.forward;

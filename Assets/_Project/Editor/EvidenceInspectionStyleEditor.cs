@@ -19,8 +19,8 @@ public static class EvidenceInspectionStyleEditor
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
-        GameObject canvasObject = FindGameObjectInScene(activeScene, "EvidenceInspectionCanvas");
-        GameObject panelObject = FindGameObjectInScene(activeScene, "InspectionPanel");
+        GameObject canvasObject = EditorUIUtility.FindSceneObject(activeScene, "EvidenceInspectionCanvas");
+        GameObject panelObject = EditorUIUtility.FindSceneObject(activeScene, "InspectionPanel");
         TMP_Text idText = FindComponentByName<TMP_Text>(activeScene, "EvidenceIDText");
         TMP_Text nameText = FindComponentByName<TMP_Text>(activeScene, "EvidenceNameText");
         TMP_Text descriptionText = FindComponentByName<TMP_Text>(activeScene, "DescriptionText");
@@ -307,23 +307,9 @@ public static class EvidenceInspectionStyleEditor
         }
     }
 
-    private static GameObject FindGameObjectInScene(Scene scene, string objectName)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            foreach (Transform child in root.GetComponentsInChildren<Transform>(includeInactive: true))
-            {
-                if (string.Equals(child.name, objectName, StringComparison.Ordinal))
-                    return child.gameObject;
-            }
-        }
-
-        return null;
-    }
-
     private static T FindComponentByName<T>(Scene scene, string objectName) where T : Component
     {
-        GameObject gameObject = FindGameObjectInScene(scene, objectName);
+        GameObject gameObject = EditorUIUtility.FindSceneObject(scene, objectName);
         return gameObject != null ? gameObject.GetComponent<T>() : null;
     }
 }

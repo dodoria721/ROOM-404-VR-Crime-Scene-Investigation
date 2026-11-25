@@ -41,32 +41,6 @@ public sealed class DeductionController : MonoBehaviour
         resultController = GetComponent<ResultController>();
     }
 
-    [ContextMenu("Debug / Select Kim Min Su")]
-    public void SelectKimMinSu()
-    {
-        TrySelectSuspect(SuspectId.KimMinSu);
-    }
-
-    [ContextMenu("Debug / Select Lee Seo Yeon")]
-    public void SelectLeeSeoYeon()
-    {
-        TrySelectSuspect(SuspectId.LeeSeoYeon);
-    }
-
-    [ContextMenu("Debug / Select Park Jin Ho")]
-    public void SelectParkJinHo()
-    {
-        TrySelectSuspect(SuspectId.ParkJinHo);
-    }
-
-    public bool TrySelectSuspect(SuspectId suspect)
-    {
-        Debug.LogWarning(
-            "[최종 추리] 사건 유형 없이 용의자만 제출할 수 없습니다. 사건 유형을 함께 전달하세요.",
-            this);
-        return false;
-    }
-
     public bool TrySelectSuspect(CaseType caseType, SuspectId suspect)
     {
         if (!Application.isPlaying)
@@ -174,10 +148,9 @@ public sealed class DeductionController : MonoBehaviour
 
     private void UnsubscribeFromEvidenceManager()
     {
-        if (subscribedManager == null)
-            return;
+        if (subscribedManager is not null)
+            subscribedManager.DeductionUnlocked -= HandleDeductionUnlocked;
 
-        subscribedManager.DeductionUnlocked -= HandleDeductionUnlocked;
         subscribedManager = null;
     }
 }

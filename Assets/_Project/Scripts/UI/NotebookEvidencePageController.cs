@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -78,21 +79,28 @@ public sealed class NotebookEvidencePageController : MonoBehaviour
     [SerializeField] private TMP_Text detailPageNumberText;
 
     private EvidenceManager subscribedManager;
+    private Coroutine evidenceSubscriptionRoutine;
     private bool buttonListenersRegistered;
 
     private void OnEnable()
     {
         RegisterButtonListeners();
-        Subscribe();
+        if (!TrySubscribe() && evidenceSubscriptionRoutine == null)
+            evidenceSubscriptionRoutine = StartCoroutine(WaitForEvidenceManager());
         ShowEvidenceGrid();
         Refresh();
     }
 
     private void OnDisable()
     {
+        if (evidenceSubscriptionRoutine != null)
+        {
+            StopCoroutine(evidenceSubscriptionRoutine);
+            evidenceSubscriptionRoutine = null;
+        }
+        Unsubscribe();
         ShowEvidenceGrid();
         UnregisterButtonListeners();
-        Unsubscribe();
     }
 
     public void Refresh()
@@ -124,21 +132,34 @@ public sealed class NotebookEvidencePageController : MonoBehaviour
         }
     }
 
-    private void Subscribe()
+    private bool TrySubscribe()
     {
         EvidenceManager manager = EvidenceManager.Instance;
+        if (manager == null)
+            return false;
+
         if (manager == subscribedManager)
-            return;
+            return true;
 
         Unsubscribe();
         subscribedManager = manager;
-        if (subscribedManager != null)
-            subscribedManager.EvidenceRegistered += HandleEvidenceRegistered;
+        subscribedManager.EvidenceRegistered += HandleEvidenceRegistered;
+        return true;
+    }
+
+    private IEnumerator WaitForEvidenceManager()
+    {
+        do
+            yield return null;
+        while (!TrySubscribe());
+
+        evidenceSubscriptionRoutine = null;
+        Refresh();
     }
 
     private void Unsubscribe()
     {
-        if (subscribedManager != null)
+        if (subscribedManager is not null)
             subscribedManager.EvidenceRegistered -= HandleEvidenceRegistered;
 
         subscribedManager = null;

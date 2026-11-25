@@ -42,7 +42,7 @@ public static class EndingUIFigmaApplier
             throw new InvalidOperationException("Ending UI에 필요한 Font 또는 Portrait를 불러오지 못했습니다.");
 
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        GameObject canvasObject = FindSceneObject(scene, "EndingCanvas");
+        GameObject canvasObject = EditorUIUtility.FindSceneObject(scene, "EndingCanvas");
         if (canvasObject == null)
             throw new InvalidOperationException("VR_Test에서 EndingCanvas를 찾을 수 없습니다.");
 
@@ -64,7 +64,7 @@ public static class EndingUIFigmaApplier
         GameObject endingRoot = FindChild(canvasObject.transform, "EndingRoot");
         endingRoot.SetActive(true);
         DestroyChildren(endingRoot.transform);
-        Stretch(endingRoot.GetComponent<RectTransform>());
+        EditorUIUtility.StretchWithCenteredPivot(endingRoot.GetComponent<RectTransform>());
 
         CreateBackdrop(endingRoot.transform);
         GameObject successPanel = CreateRoot("SuccessPanel", endingRoot.transform);
@@ -318,13 +318,9 @@ public static class EndingUIFigmaApplier
     private static GameObject CreateBlock(string name, Transform parent, float x, float y,
         float width, float height, Color color, bool raycast = false)
     {
-        GameObject go = CreateUIObject(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
-        Image image = go.AddComponent<Image>();
-        image.color = color;
-        image.raycastTarget = raycast;
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        image.type = Image.Type.Sliced;
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        EditorUIUtility.AddSlicedImage(go, color, raycast);
         return go;
     }
 
@@ -332,8 +328,8 @@ public static class EndingUIFigmaApplier
         float size, FontStyles style, Color color, Vector2 topLeft, Vector2 dimensions,
         bool wrap = false, TextAlignmentOptions alignment = TextAlignmentOptions.Left)
     {
-        GameObject go = CreateUIObject(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), topLeft.x, topLeft.y, dimensions.x, dimensions.y);
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), topLeft.x, topLeft.y, dimensions.x, dimensions.y);
         TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
         text.font = font;
         text.text = value;
@@ -351,17 +347,9 @@ public static class EndingUIFigmaApplier
 
     private static GameObject CreateRoot(string name, Transform parent)
     {
-        GameObject root = CreateUIObject(name, parent);
-        Stretch(root.GetComponent<RectTransform>());
+        GameObject root = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.StretchWithCenteredPivot(root.GetComponent<RectTransform>());
         return root;
-    }
-
-    private static GameObject CreateUIObject(string name, Transform parent)
-    {
-        GameObject go = new(name, typeof(RectTransform));
-        go.layer = 5;
-        go.transform.SetParent(parent, false);
-        return go;
     }
 
     private static void AddOutline(GameObject target, Color color, float distance)
@@ -400,20 +388,6 @@ public static class EndingUIFigmaApplier
             Object.DestroyImmediate(parent.GetChild(i).gameObject);
     }
 
-    private static GameObject FindSceneObject(Scene scene, string name)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
-            foreach (Transform item in transforms)
-            {
-                if (item.name == name)
-                    return item.gameObject;
-            }
-        }
-        return null;
-    }
-
     private static GameObject FindChild(Transform parent, string name)
     {
         Transform[] transforms = parent.GetComponentsInChildren<Transform>(true);
@@ -423,26 +397,6 @@ public static class EndingUIFigmaApplier
                 return item.gameObject;
         }
         throw new InvalidOperationException($"{parent.name} 아래에서 {name}을 찾을 수 없습니다.");
-    }
-
-    private static void SetTopLeft(RectTransform rect, float x, float y, float width, float height)
-    {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(x, -y);
-        rect.sizeDelta = new Vector2(width, height);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
     }
 
     private static Color Html(string value, float alpha = 1f)

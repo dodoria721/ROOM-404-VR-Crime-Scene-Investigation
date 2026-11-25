@@ -29,7 +29,7 @@ public static class DeductionStartUIStyleEditor
             return;
 
         Scene scene = SceneManager.GetActiveScene();
-        GameObject canvasObject = FindGameObjectInScene(scene, "DeductionCanvas");
+        GameObject canvasObject = EditorUIUtility.FindSceneObject(scene, "DeductionCanvas");
         if (canvasObject == null)
         {
             EditorUtility.DisplayDialog(
@@ -464,20 +464,6 @@ public static class DeductionStartUIStyleEditor
         }
 
         return valid;
-    }
-
-    private static GameObject FindGameObjectInScene(Scene scene, string objectName)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (string.Equals(child.name, objectName, StringComparison.Ordinal))
-                    return child.gameObject;
-            }
-        }
-
-        return null;
     }
 
     private static void SetLayerRecursively(GameObject gameObject, int layer)

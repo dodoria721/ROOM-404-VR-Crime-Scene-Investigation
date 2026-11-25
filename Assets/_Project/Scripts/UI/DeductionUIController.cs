@@ -41,14 +41,6 @@ public sealed class DeductionUIController : MonoBehaviour
     [SerializeField] private Sprite leeSeoYeonPortrait;
     [SerializeField] private Sprite parkJinHoPortrait;
 
-    [Header("Legacy Result UI")]
-    [SerializeField] private GameObject resultPanel;
-    [SerializeField] private Image resultBackground;
-    [SerializeField] private TMP_Text resultIconText;
-    [SerializeField] private TMP_Text resultTitleText;
-    [SerializeField] private TMP_Text resultDescriptionText;
-    [SerializeField] private TMP_Text resultSupportText;
-
     [Header("Visual Settings")]
     [SerializeField] private Color selectedOutlineColor = new(0.82f, 0.70f, 0.43f, 1f);
 
@@ -56,8 +48,6 @@ public sealed class DeductionUIController : MonoBehaviour
     private SuspectId selectedSuspect;
     private bool confirmationInProgress;
 
-    public event Action<SuspectId> SuspectPreviewChanged;
-    public event Action<SuspectId, bool> ResultPresented;
     public event Action<bool> PanelVisibilityChanged;
 
     public bool HasSelection => hasSelection;
@@ -69,7 +59,6 @@ public sealed class DeductionUIController : MonoBehaviour
         ResolveControllers();
         SetPanelVisible(false);
         SetConfirmationVisible(false);
-        SetResultVisible(false);
         RefreshSelectionVisuals();
     }
 
@@ -218,7 +207,6 @@ public sealed class DeductionUIController : MonoBehaviour
         SetStatus($"{GetSuspectDisplayName(suspect)} 선택 · 결론 제출 전까지 변경할 수 있습니다.");
         RefreshSelectionVisuals();
         RefreshInteractableState();
-        SuspectPreviewChanged?.Invoke(suspect);
     }
 
     private void ClearPreviewSelection()
@@ -252,15 +240,13 @@ public sealed class DeductionUIController : MonoBehaviour
         RefreshInteractableState();
     }
 
-    private void HandleResultDetermined(SuspectId suspect, bool isSuccess)
+    private void HandleResultDetermined(SuspectId suspect, bool _)
     {
         confirmationInProgress = false;
         hasSelection = true;
         selectedSuspect = suspect;
         SetConfirmationVisible(false);
         SetPanelVisible(false);
-        SetResultVisible(false);
-        ResultPresented?.Invoke(suspect, isSuccess);
     }
 
     private void SynchronizeState()
@@ -279,7 +265,6 @@ public sealed class DeductionUIController : MonoBehaviour
                 ? "용의자를 선택하면 최종 결론 제출 버튼이 활성화됩니다."
                 : "필수 증거 4개를 모두 수집해야 사건 추리를 시작할 수 있습니다.");
         }
-        SetResultVisible(false);
         RefreshSelectionVisuals();
         RefreshInteractableState();
     }
@@ -392,12 +377,6 @@ public sealed class DeductionUIController : MonoBehaviour
     }
 
     private bool IsConfirmationVisible() => confirmationPanel != null && confirmationPanel.activeSelf;
-
-    private void SetResultVisible(bool visible)
-    {
-        if (resultPanel != null && resultPanel.activeSelf != visible)
-            resultPanel.SetActive(visible);
-    }
 
     private void SetStatus(string message)
     {

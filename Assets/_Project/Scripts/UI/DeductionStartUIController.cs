@@ -350,11 +350,11 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private void UnsubscribeFromEvidenceManager()
     {
-        if (subscribedManager == null)
-            return;
-
-        subscribedManager.EvidenceRegistered -= HandleEvidenceRegistered;
-        subscribedManager.DeductionUnlocked -= HandleDeductionUnlocked;
+        if (subscribedManager is not null)
+        {
+            subscribedManager.EvidenceRegistered -= HandleEvidenceRegistered;
+            subscribedManager.DeductionUnlocked -= HandleDeductionUnlocked;
+        }
         subscribedManager = null;
     }
 

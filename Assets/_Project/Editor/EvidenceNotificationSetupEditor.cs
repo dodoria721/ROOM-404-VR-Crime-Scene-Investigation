@@ -21,7 +21,7 @@ public static class EvidenceNotificationSetupEditor
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
-        GameObject existingCanvas = FindGameObjectInScene(activeScene, CanvasObjectName);
+        GameObject existingCanvas = EditorUIUtility.FindSceneObject(activeScene, CanvasObjectName);
 
         if (existingCanvas != null)
         {
@@ -132,7 +132,7 @@ public static class EvidenceNotificationSetupEditor
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
-        GameObject canvasObject = FindGameObjectInScene(activeScene, CanvasObjectName);
+        GameObject canvasObject = EditorUIUtility.FindSceneObject(activeScene, CanvasObjectName);
         Transform mainCamera = FindMainCameraTransform(activeScene);
 
         if (canvasObject == null || mainCamera == null)
@@ -374,25 +374,11 @@ public static class EvidenceNotificationSetupEditor
 
     private static Transform FindMainCameraTransform(Scene scene)
     {
-        GameObject xrOrigin = FindGameObjectInScene(scene, "XR Origin (VR)");
+        GameObject xrOrigin = EditorUIUtility.FindSceneObject(scene, "XR Origin (VR)");
         if (xrOrigin == null)
             return null;
 
         return xrOrigin.transform.Find("Camera Offset/Main Camera");
-    }
-
-    private static GameObject FindGameObjectInScene(Scene scene, string objectName)
-    {
-        foreach (GameObject rootObject in scene.GetRootGameObjects())
-        {
-            foreach (Transform child in rootObject.GetComponentsInChildren<Transform>(includeInactive: true))
-            {
-                if (string.Equals(child.name, objectName, StringComparison.Ordinal))
-                    return child.gameObject;
-            }
-        }
-
-        return null;
     }
 
     private static GameObject FindChildByName(Transform parent, string objectName)
