@@ -35,8 +35,8 @@ public static class DeductionUnlockFigmaApplier
             throw new InvalidOperationException("Noto Sans KR TMP Font Asset을 찾을 수 없습니다.");
 
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        GameObject deductionCanvas = FindSceneObject(scene, "DeductionCanvas");
-        GameObject mainCameraObject = FindSceneObject(scene, "Main Camera");
+        GameObject deductionCanvas = EditorUIUtility.FindSceneObject(scene, "DeductionCanvas");
+        GameObject mainCameraObject = EditorUIUtility.FindSceneObject(scene, "Main Camera");
         if (deductionCanvas == null || mainCameraObject == null)
             throw new InvalidOperationException("DeductionCanvas 또는 Main Camera를 찾을 수 없습니다.");
 
@@ -44,18 +44,18 @@ public static class DeductionUnlockFigmaApplier
         if (controller == null)
             throw new InvalidOperationException("DeductionStartUIController를 찾을 수 없습니다.");
 
-        GameObject oldStartArea = FindSceneObject(scene, "DeductionStartArea");
+        GameObject oldStartArea = EditorUIUtility.FindSceneObject(scene, "DeductionStartArea");
         if (oldStartArea != null)
             Object.DestroyImmediate(oldStartArea);
 
-        GameObject previousUnlockCanvas = FindSceneObject(scene, "DeductionUnlockCanvas");
+        GameObject previousUnlockCanvas = EditorUIUtility.FindSceneObject(scene, "DeductionUnlockCanvas");
         if (previousUnlockCanvas != null)
             Object.DestroyImmediate(previousUnlockCanvas);
 
         GameObject unlockCanvas = CreateCanvas(mainCameraObject.transform,
             mainCameraObject.GetComponent<Camera>());
-        GameObject promptRoot = CreateRoot("DeductionUnlockPrompt", unlockCanvas.transform);
-        Stretch(promptRoot.GetComponent<RectTransform>());
+        GameObject promptRoot = EditorUIUtility.CreateUIObject("DeductionUnlockPrompt", unlockCanvas.transform);
+        EditorUIUtility.StretchWithCenteredPivot(promptRoot.GetComponent<RectTransform>());
 
         Image dim = promptRoot.AddComponent<Image>();
         dim.color = Html("#080F1A", 0.76f);
@@ -101,11 +101,11 @@ public static class DeductionUnlockFigmaApplier
             Html("#263646"), Html("#F3F1EE"), Html("#627386"));
 
         SerializedObject serializedController = new(controller);
-        SetReference(serializedController, "startAreaRoot", promptRoot);
-        SetReference(serializedController, "deductionStartButton", startButton);
-        SetReference(serializedController, "continueInvestigationButton", continueButton);
-        SetReference(serializedController, "guidanceText", null);
-        SetReference(serializedController, "requiredEvidenceProgressText", progress);
+        EditorUIUtility.SetObjectReference(serializedController, "startAreaRoot", promptRoot);
+        EditorUIUtility.SetObjectReference(serializedController, "deductionStartButton", startButton);
+        EditorUIUtility.SetObjectReference(serializedController, "continueInvestigationButton", continueButton);
+        EditorUIUtility.SetObjectReference(serializedController, "guidanceText", null);
+        EditorUIUtility.SetObjectReference(serializedController, "requiredEvidenceProgressText", progress);
         SerializedProperty indicators = serializedController.FindProperty("requiredEvidenceIndicators");
         if (indicators != null)
             indicators.arraySize = 0;
@@ -176,13 +176,9 @@ public static class DeductionUnlockFigmaApplier
     private static GameObject CreateBlock(string name, Transform parent, float x, float y,
         float width, float height, Color color, bool raycast = false)
     {
-        GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
-        Image image = go.AddComponent<Image>();
-        image.color = color;
-        image.raycastTarget = raycast;
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        image.type = Image.Type.Sliced;
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        EditorUIUtility.AddSlicedImage(go, color, raycast);
         return go;
     }
 
@@ -191,70 +187,9 @@ public static class DeductionUnlockFigmaApplier
         float x, float y, float width, float height,
         TextAlignmentOptions alignment = TextAlignmentOptions.Left)
     {
-        GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
-        TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
-        text.font = font;
-        text.text = value;
-        text.fontSize = size;
-        text.fontStyle = style;
-        text.color = color;
-        text.alignment = alignment;
-        text.enableAutoSizing = false;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
-        text.overflowMode = TextOverflowModes.Ellipsis;
-        text.raycastTarget = false;
-        text.margin = Vector4.zero;
-        return text;
-    }
-
-    private static GameObject CreateRoot(string name, Transform parent)
-    {
-        GameObject go = new(name, typeof(RectTransform));
-        go.layer = 5;
-        go.transform.SetParent(parent, false);
-        return go;
-    }
-
-    private static void SetTopLeft(RectTransform rect, float x, float y, float width, float height)
-    {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(x, -y);
-        rect.sizeDelta = new Vector2(width, height);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
-    }
-
-    private static void SetReference(SerializedObject target, string propertyName, Object value)
-    {
-        SerializedProperty property = target.FindProperty(propertyName);
-        if (property == null)
-            throw new InvalidOperationException($"직렬화 필드를 찾을 수 없습니다: {propertyName}");
-        property.objectReferenceValue = value;
-    }
-
-    private static GameObject FindSceneObject(Scene scene, string name)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (item.name == name)
-                    return item.gameObject;
-            }
-        }
-        return null;
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        return EditorUIUtility.AddSingleLineText(go, font, value, size, style, color, alignment);
     }
 
     private static Color Html(string value, float alpha = 1f)

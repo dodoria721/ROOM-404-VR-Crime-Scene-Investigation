@@ -20,13 +20,6 @@ public sealed class ResultController : MonoBehaviour
     public SuspectId SelectedSuspect { get; private set; }
     public bool IsSuccess { get; private set; }
 
-    // 기존 호출자의 컴파일 호환성은 유지하되 사건 유형을 우회한 결과 확정은 차단한다.
-    internal bool TryDetermineResult(SuspectId suspect)
-    {
-        Debug.LogWarning("[최종 추리] 사건 유형 없이 결과를 확정할 수 없습니다.", this);
-        return false;
-    }
-
     internal bool TryDetermineResult(CaseType caseType, SuspectId suspect)
     {
         if (HasResult)

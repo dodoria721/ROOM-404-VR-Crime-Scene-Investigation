@@ -48,30 +48,34 @@ public class FootstepController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (player == null || Time.deltaTime <= 0f)
+        float deltaTime = Time.deltaTime;
+        if (player == null || deltaTime <= 0f)
             return;
 
-        Vector3 movement = player.position - lastPosition;
+        player.GetPositionAndRotation(out Vector3 position, out Quaternion rotation);
+        Vector3 movement = position - lastPosition;
+        Quaternion previousRotation = lastRotation;
 
-        float rotationDelta = Quaternion.Angle(
-            lastRotation, player.rotation);
-
-        lastPosition = player.position;
-        lastRotation = player.rotation;
+        lastPosition = position;
+        lastRotation = rotation;
 
         // 순간이동 및 Snap Turn 감지
-        if (movement.magnitude > teleportThreshold ||
-            rotationDelta > 10f)
+        float distance = movement.magnitude;
+        if (distance > teleportThreshold ||
+            Quaternion.Angle(previousRotation, rotation) > 10f)
         {
             distanceTraveled = 0f;
             return;
         }
 
-        // 수직 방향 이동 제외
-        movement.y = 0f;
+        // 수직 이동이 없으면 순간이동 검사에 사용한 거리를 재사용한다.
+        if (movement.y != 0f)
+        {
+            movement.y = 0f;
+            distance = movement.magnitude;
+        }
 
-        float distance = movement.magnitude;
-        float speed = distance / Time.deltaTime;
+        float speed = distance / deltaTime;
 
         // 정지 상태에서는 발소리 재생하지 않음
         if (speed < minMoveSpeed)

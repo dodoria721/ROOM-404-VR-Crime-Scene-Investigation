@@ -1467,11 +1467,7 @@ public static class GameFlowSetupEditor
 
     private static void SetRectFromTopLeft(RectTransform rect, Vector2 topLeft, Vector2 size)
     {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(topLeft.x, -topLeft.y);
-        rect.sizeDelta = size;
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
+        EditorUIUtility.SetTopLeft(rect, topLeft.x, topLeft.y, size.x, size.y);
     }
 
     private static void Stretch(RectTransform rect)

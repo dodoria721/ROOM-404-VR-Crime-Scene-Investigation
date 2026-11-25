@@ -27,6 +27,8 @@ public sealed class UVLightController : MonoBehaviour
     [SerializeField] private float spotAngle = 35f;
 
     private UVRevealable currentTarget;
+    private Collider cachedHitCollider;
+    private UVRevealable cachedRevealable;
     private bool isGrabbed;
     private bool isUVOn;
 
@@ -130,7 +132,10 @@ public sealed class UVLightController : MonoBehaviour
             uvSpotLight.enabled = active;
 
         if (!active)
+        {
+            ClearHitCache();
             ClearCurrentTarget();
+        }
     }
 
     private void PerformDetection()
@@ -145,17 +150,46 @@ public sealed class UVLightController : MonoBehaviour
             detectionMask,
             triggerInteraction);
 
-        UVRevealable nextTarget = null;
-        if (hitSomething)
-            nextTarget = hit.collider.GetComponentInParent<UVRevealable>();
+        SetCurrentTarget(ResolveHitTarget(hitSomething ? hit.collider : null));
+    }
 
-        SetCurrentTarget(nextTarget);
+    private UVRevealable ResolveHitTarget(Collider hitCollider)
+    {
+        if (hitCollider == null)
+        {
+            ClearHitCache();
+            return null;
+        }
+
+        // A real null is a cached miss; a destroyed Unity object needs a new lookup.
+        if (cachedHitCollider != hitCollider ||
+            (!ReferenceEquals(cachedRevealable, null) && cachedRevealable == null))
+        {
+            cachedHitCollider = hitCollider;
+            cachedRevealable = hitCollider.GetComponentInParent<UVRevealable>();
+        }
+
+        return cachedRevealable != null && cachedRevealable.isActiveAndEnabled
+            ? cachedRevealable
+            : null;
+    }
+
+    private void ClearHitCache()
+    {
+        cachedHitCollider = null;
+        cachedRevealable = null;
     }
 
     private void SetCurrentTarget(UVRevealable nextTarget)
     {
         if (currentTarget == nextTarget)
+        {
+            // OnDisable clears illumination even if the target is re-enabled between raycasts.
+            currentTarget = nextTarget;
+            if (currentTarget != null && !currentTarget.IsIlluminated)
+                currentTarget.SetIlluminated(true);
             return;
+        }
 
         if (currentTarget != null)
             currentTarget.SetIlluminated(false);

@@ -36,8 +36,8 @@ public static class EvidenceHudFigmaApplier
             throw new InvalidOperationException("Noto Sans KR TMP Font Asset을 찾을 수 없습니다.");
 
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        GameObject inspectionCanvas = FindSceneObject(scene, "EvidenceInspectionCanvas");
-        GameObject notificationCanvas = FindSceneObject(scene, "EvidenceNotificationCanvas");
+        GameObject inspectionCanvas = EditorUIUtility.FindSceneObject(scene, "EvidenceInspectionCanvas");
+        GameObject notificationCanvas = EditorUIUtility.FindSceneObject(scene, "EvidenceNotificationCanvas");
         if (inspectionCanvas == null || notificationCanvas == null)
             throw new InvalidOperationException("VR_Test에서 Evidence Canvas를 찾을 수 없습니다.");
 
@@ -57,21 +57,21 @@ public static class EvidenceHudFigmaApplier
         NotificationReferences notification = BuildNotification(notificationCanvas.transform, font);
 
         SerializedObject inspectionSerialized = new(inspectionController);
-        SetReference(inspectionSerialized, "inspectionPanel", inspection.Panel);
-        SetReference(inspectionSerialized, "evidenceIdText", inspection.IdText);
-        SetReference(inspectionSerialized, "evidenceNameText", inspection.NameText);
-        SetReference(inspectionSerialized, "descriptionText", inspection.DescriptionText);
-        SetReference(inspectionSerialized, "requiredProgressText", inspection.RequiredProgressText);
+        EditorUIUtility.SetObjectReference(inspectionSerialized, "inspectionPanel", inspection.Panel);
+        EditorUIUtility.SetObjectReference(inspectionSerialized, "evidenceIdText", inspection.IdText);
+        EditorUIUtility.SetObjectReference(inspectionSerialized, "evidenceNameText", inspection.NameText);
+        EditorUIUtility.SetObjectReference(inspectionSerialized, "descriptionText", inspection.DescriptionText);
+        EditorUIUtility.SetObjectReference(inspectionSerialized, "requiredProgressText", inspection.RequiredProgressText);
         inspectionSerialized.ApplyModifiedPropertiesWithoutUndo();
 
         SerializedObject notificationSerialized = new(notificationController);
-        SetReference(notificationSerialized, "notificationPanel", notification.Panel);
-        SetReference(notificationSerialized, "notificationTitleText", notification.TitleText);
-        SetReference(notificationSerialized, "evidenceIdText", notification.IdText);
-        SetReference(notificationSerialized, "evidenceNameText", notification.NameText);
-        SetReference(notificationSerialized, "notificationMessageText", notification.MessageText);
-        SetReference(notificationSerialized, "requiredProgressText", notification.RequiredProgressText);
-        SetReference(notificationSerialized, "requiredProgressFill", notification.ProgressFill);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "notificationPanel", notification.Panel);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "notificationTitleText", notification.TitleText);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "evidenceIdText", notification.IdText);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "evidenceNameText", notification.NameText);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "notificationMessageText", notification.MessageText);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "requiredProgressText", notification.RequiredProgressText);
+        EditorUIUtility.SetObjectReference(notificationSerialized, "requiredProgressFill", notification.ProgressFill);
         SetBoolean(notificationSerialized, "applySafeWorldSpaceDefaults", false);
         notificationSerialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -94,8 +94,8 @@ public static class EvidenceHudFigmaApplier
         CreateText(caseStatus.transform, font, "InvestigationStatus", "현장 조사 중", 28f,
             FontStyles.Normal, White, 24f, 42f, 180f, 43f);
 
-        GameObject objective = CreateRoot("InvestigationObjective", root);
-        SetTopLeft(objective.GetComponent<RectTransform>(), 64f, 340f, 360f, 119f);
+        GameObject objective = EditorUIUtility.CreateUIObject("InvestigationObjective", root);
+        EditorUIUtility.SetTopLeft(objective.GetComponent<RectTransform>(), 64f, 340f, 360f, 119f);
         TMP_Text objectiveTitle = CreateText(objective.transform, font, "ObjectiveTitle", "현장 조사",
             26f, FontStyles.Bold, Html("#E0BF63"), 22f, 13f, 316f, 40f);
         TMP_Text objectiveLabel = CreateText(objective.transform, font, "ObjectiveLabel", "필수 증거 확보",
@@ -206,13 +206,9 @@ public static class EvidenceHudFigmaApplier
     private static GameObject CreateBlock(string name, Transform parent, float x, float y,
         float width, float height, Color color)
     {
-        GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
-        Image image = go.AddComponent<Image>();
-        image.color = color;
-        image.raycastTarget = false;
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        image.type = Image.Type.Sliced;
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        EditorUIUtility.AddSlicedImage(go, color, false);
         return go;
     }
 
@@ -220,21 +216,9 @@ public static class EvidenceHudFigmaApplier
         float fontSize, FontStyles style, Color color, float x, float y, float width, float height,
         TextAlignmentOptions alignment = TextAlignmentOptions.Left)
     {
-        GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
-        TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
-        text.font = font;
-        text.text = value;
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.color = color;
-        text.alignment = alignment;
-        text.enableAutoSizing = false;
-        text.textWrappingMode = TextWrappingModes.NoWrap;
-        text.overflowMode = TextOverflowModes.Ellipsis;
-        text.raycastTarget = false;
-        text.margin = Vector4.zero;
-        return text;
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        return EditorUIUtility.AddSingleLineText(go, font, value, fontSize, style, color, alignment);
     }
 
     private static void AddShadow(TMP_Text text)
@@ -243,31 +227,6 @@ public static class EvidenceHudFigmaApplier
         shadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
         shadow.effectDistance = new Vector2(0f, -2f);
         shadow.useGraphicAlpha = true;
-    }
-
-    private static GameObject CreateRoot(string name, Transform parent)
-    {
-        GameObject go = new(name, typeof(RectTransform));
-        go.layer = 5;
-        go.transform.SetParent(parent, false);
-        return go;
-    }
-
-    private static void SetTopLeft(RectTransform rect, float x, float y, float width, float height)
-    {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(x, -y);
-        rect.sizeDelta = new Vector2(width, height);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
-    }
-
-    private static void SetReference(SerializedObject target, string propertyName, Object value)
-    {
-        SerializedProperty property = target.FindProperty(propertyName);
-        if (property == null)
-            throw new InvalidOperationException($"직렬화 필드를 찾을 수 없습니다: {propertyName}");
-        property.objectReferenceValue = value;
     }
 
     private static void SetBoolean(SerializedObject target, string propertyName, bool value)
@@ -282,19 +241,6 @@ public static class EvidenceHudFigmaApplier
     {
         for (int i = parent.childCount - 1; i >= 0; i--)
             Object.DestroyImmediate(parent.GetChild(i).gameObject);
-    }
-
-    private static GameObject FindSceneObject(Scene scene, string name)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (item.name == name)
-                    return item.gameObject;
-            }
-        }
-        return null;
     }
 
     private static Color Html(string value, float alpha = 1f)

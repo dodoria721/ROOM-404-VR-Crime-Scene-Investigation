@@ -54,8 +54,8 @@ public static class CaseTypeUISetupEditor
         {
             LoadResources();
             Scene scene = OpenTargetScene();
-            GameObject mainCameraObject = FindSceneObject(scene, "Main Camera");
-            GameObject overlayCameraObject = FindSceneObject(scene, "XRUIOverlayCamera");
+            GameObject mainCameraObject = EditorUIUtility.FindSceneObject(scene, "Main Camera");
+            GameObject overlayCameraObject = EditorUIUtility.FindSceneObject(scene, "XRUIOverlayCamera");
 
             if (mainCameraObject == null || overlayCameraObject == null)
                 throw new InvalidOperationException("Main Camera 또는 XRUIOverlayCamera를 찾을 수 없습니다.");
@@ -64,7 +64,7 @@ public static class CaseTypeUISetupEditor
             if (overlayCamera == null)
                 throw new InvalidOperationException("XRUIOverlayCamera에 Camera 컴포넌트가 없습니다.");
 
-            GameObject existing = FindSceneObject(scene, "CaseTypeCanvas");
+            GameObject existing = EditorUIUtility.FindSceneObject(scene, "CaseTypeCanvas");
             if (existing != null)
                 Undo.DestroyObjectImmediate(existing);
 
@@ -179,7 +179,7 @@ public static class CaseTypeUISetupEditor
         Scene scene)
     {
         GameObject root = CreateRoot("CaseTypeRoot", canvas);
-        Stretch(root.GetComponent<RectTransform>());
+        EditorUIUtility.StretchWithCenteredPivot(root.GetComponent<RectTransform>());
 
         CreateImage(root.transform, "Background", 0f, 0f, 1920f, 1080f, Background);
         CreateGrid(root.transform);
@@ -344,7 +344,7 @@ public static class CaseTypeUISetupEditor
         string value, float y, bool highlight = false)
     {
         GameObject row = CreateRoot(name, parent);
-        SetTopLeft(row.GetComponent<RectTransform>(), 26.7f, y, 549f, 61f);
+        EditorUIUtility.SetTopLeft(row.GetComponent<RectTransform>(), 26.7f, y, 549f, 61f);
         CreateText(row.transform, "Label", label, 23f, FontStyles.Normal,
             Muted, 1f, 0f, 178f, 52f);
         TMP_Text valueText = CreateText(row.transform, "Value", value, 25f,
@@ -397,7 +397,7 @@ public static class CaseTypeUISetupEditor
     private static void CreateGrid(Transform parent)
     {
         GameObject grid = CreateRoot("BackgroundGrid", parent);
-        Stretch(grid.GetComponent<RectTransform>());
+        EditorUIUtility.StretchWithCenteredPivot(grid.GetComponent<RectTransform>());
         for (int x = 46; x <= 1920; x += 84)
             CreateImage(grid.transform, $"GridV_{x}", x, 0f, 1f, 1080f, Grid);
         for (int y = 36; y <= 1080; y += 84)
@@ -408,7 +408,7 @@ public static class CaseTypeUISetupEditor
         float x, float y, float width, float height)
     {
         GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
         Image image = go.AddComponent<Image>();
         image.sprite = sprite;
         image.color = Color.white;
@@ -423,7 +423,7 @@ public static class CaseTypeUISetupEditor
         float width, float height, Color color, bool raycast = false)
     {
         GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
         Image image = go.AddComponent<Image>();
         image.color = color;
         image.raycastTarget = raycast;
@@ -439,7 +439,7 @@ public static class CaseTypeUISetupEditor
         TextAlignmentOptions alignment = TextAlignmentOptions.Left, bool wrap = false)
     {
         GameObject go = CreateRoot(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, width, height);
         TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
         text.font = font;
         text.text = value;
@@ -473,26 +473,6 @@ public static class CaseTypeUISetupEditor
         go.transform.SetParent(parent, false);
         go.layer = overlayLayer;
         return go;
-    }
-
-    private static void SetTopLeft(RectTransform rect, float x, float y, float width, float height)
-    {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(x, -y);
-        rect.sizeDelta = new Vector2(width, height);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
     }
 
     private static void ConfigureController(CaseTypeSelectionController controller,
@@ -571,19 +551,6 @@ public static class CaseTypeUISetupEditor
         if (property == null)
             throw new InvalidOperationException($"Controller 필드를 찾을 수 없습니다: {propertyName}");
         property.objectReferenceValue = value;
-    }
-
-    private static GameObject FindSceneObject(Scene scene, string objectName)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (item.name == objectName)
-                    return item.gameObject;
-            }
-        }
-        return null;
     }
 
     private static T FindComponentInScene<T>(Scene scene) where T : Component

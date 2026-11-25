@@ -92,7 +92,6 @@ public static class DeductionUIFigmaApplier
             SetReference(so, "kimMinSuPortrait", kim);
             SetReference(so, "leeSeoYeonPortrait", lee);
             SetReference(so, "parkJinHoPortrait", park);
-            ClearLegacyResultReferences(so);
             so.ApplyModifiedPropertiesWithoutUndo();
 
             confirmation.Root.SetActive(false);
@@ -277,8 +276,8 @@ public static class DeductionUIFigmaApplier
 
     private static GameObject CreateBlock(string name, Transform parent, float x, float y, float w, float h, Color color, bool raycast = false)
     {
-        GameObject go = CreateUIObject(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, w, h);
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, w, h);
         Image image = go.AddComponent<Image>();
         image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         image.type = Image.Type.Sliced;
@@ -290,8 +289,8 @@ public static class DeductionUIFigmaApplier
     private static TMP_Text CreateText(Transform parent, TMP_FontAsset font, string name, string value, float size,
         FontStyles style, Color color, float x, float y, float w, float h, TextAlignmentOptions alignment = TextAlignmentOptions.Left)
     {
-        GameObject go = CreateUIObject(name, parent);
-        SetTopLeft(go.GetComponent<RectTransform>(), x, y, w, h);
+        GameObject go = EditorUIUtility.CreateUIObject(name, parent);
+        EditorUIUtility.SetTopLeft(go.GetComponent<RectTransform>(), x, y, w, h);
         TextMeshProUGUI text = go.AddComponent<TextMeshProUGUI>();
         text.font = font;
         text.text = value;
@@ -323,7 +322,7 @@ public static class DeductionUIFigmaApplier
     private static void ApplySceneInstanceSize()
     {
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        GameObject instance = FindSceneObject(scene, "DeductionCanvas");
+        GameObject instance = EditorUIUtility.FindSceneObject(scene, "DeductionCanvas");
         if (instance == null)
             throw new InvalidOperationException("VR_Test에서 DeductionCanvas instance를 찾을 수 없습니다.");
         RectTransform rect = instance.GetComponent<RectTransform>();
@@ -337,13 +336,6 @@ public static class DeductionUIFigmaApplier
             throw new InvalidOperationException("VR_Test scene 저장에 실패했습니다.");
     }
 
-    private static void ClearLegacyResultReferences(SerializedObject so)
-    {
-        string[] names = { "resultPanel", "resultBackground", "resultIconText", "resultTitleText", "resultDescriptionText", "resultSupportText" };
-        foreach (string name in names)
-            SetReference(so, name, null);
-    }
-
     private static void SetReference(SerializedObject so, string propertyName, Object value)
     {
         SerializedProperty property = so.FindProperty(propertyName);
@@ -352,43 +344,17 @@ public static class DeductionUIFigmaApplier
         property.objectReferenceValue = value;
     }
 
-    private static GameObject FindSceneObject(Scene scene, string name)
-    {
-        foreach (GameObject root in scene.GetRootGameObjects())
-            foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-                if (item.name == name)
-                    return item.gameObject;
-        return null;
-    }
-
     private static GameObject CreateRoot(string name, Transform parent)
     {
-        GameObject root = CreateUIObject(name, parent);
+        GameObject root = EditorUIUtility.CreateUIObject(name, parent);
         Stretch(root.GetComponent<RectTransform>());
         return root;
-    }
-
-    private static GameObject CreateUIObject(string name, Transform parent)
-    {
-        GameObject go = new(name, typeof(RectTransform));
-        go.layer = 5;
-        go.transform.SetParent(parent, false);
-        return go;
     }
 
     private static void DestroyChildren(Transform parent)
     {
         for (int i = parent.childCount - 1; i >= 0; i--)
             Object.DestroyImmediate(parent.GetChild(i).gameObject);
-    }
-
-    private static void SetTopLeft(RectTransform rect, float x, float y, float w, float h)
-    {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
-        rect.anchoredPosition = new Vector2(x, -y);
-        rect.sizeDelta = new Vector2(w, h);
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
     }
 
     private static void Stretch(RectTransform rect)

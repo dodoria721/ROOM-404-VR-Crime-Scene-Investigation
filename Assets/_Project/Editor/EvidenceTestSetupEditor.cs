@@ -66,7 +66,7 @@ public static class EvidenceTestSetupEditor
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
-        GameObject rootObject = FindGameObjectInScene(activeScene, RootObjectName);
+        GameObject rootObject = EditorUIUtility.FindSceneObject(activeScene, RootObjectName);
 
         if (rootObject != null && rootObject.transform.parent != null)
         {
@@ -96,7 +96,7 @@ public static class EvidenceTestSetupEditor
 
         foreach (TestEvidenceDefinition definition in TestEvidenceDefinitions)
         {
-            if (FindGameObjectInScene(activeScene, definition.ObjectName) != null)
+            if (EditorUIUtility.FindSceneObject(activeScene, definition.ObjectName) != null)
             {
                 skippedCount++;
                 Debug.Log(
@@ -192,17 +192,4 @@ public static class EvidenceTestSetupEditor
         EditorUtility.SetDirty(evidenceSource);
     }
 
-    private static GameObject FindGameObjectInScene(Scene scene, string objectName)
-    {
-        foreach (GameObject rootObject in scene.GetRootGameObjects())
-        {
-            foreach (Transform child in rootObject.GetComponentsInChildren<Transform>(includeInactive: true))
-            {
-                if (string.Equals(child.name, objectName, StringComparison.Ordinal))
-                    return child.gameObject;
-            }
-        }
-
-        return null;
-    }
 }
