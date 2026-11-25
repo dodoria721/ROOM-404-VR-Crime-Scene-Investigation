@@ -31,6 +31,7 @@ public sealed class NotebookPageController : MonoBehaviour
     [SerializeField] private TMP_Text pageNumberText;
 
     private GameObject[] pages;
+    private RectTransform[] tabLabels;
     private bool listenersRegistered;
 
     public int CurrentPageIndex { get; private set; }
@@ -40,7 +41,6 @@ public sealed class NotebookPageController : MonoBehaviour
         CachePages();
         ValidateReferences();
         CurrentPageIndex = 0;
-        RefreshPage();
     }
 
     private void OnEnable()
@@ -59,12 +59,6 @@ public sealed class NotebookPageController : MonoBehaviour
         if (pageIndex < 0 || pageIndex >= PageCount)
         {
             Debug.LogWarning($"[Notebook] Invalid page index ignored: {pageIndex}", this);
-            return;
-        }
-
-        if (CurrentPageIndex == pageIndex)
-        {
-            RefreshPage();
             return;
         }
 
@@ -124,6 +118,8 @@ public sealed class NotebookPageController : MonoBehaviour
     {
         if (tabSelectionGraphics == null)
             return;
+        if (tabLabels == null || tabLabels.Length != tabSelectionGraphics.Length)
+            CacheTabLabels();
 
         for (int i = 0; i < tabSelectionGraphics.Length; i++)
         {
@@ -149,10 +145,24 @@ public sealed class NotebookPageController : MonoBehaviour
                 tabRoot.anchoredPosition = new Vector2(selected ? 0f : 28f, tabRoot.anchoredPosition.y);
                 tabRoot.sizeDelta = new Vector2(width, tabRoot.sizeDelta.y);
 
-                RectTransform label = tabRoot.Find("Label") as RectTransform;
+                RectTransform label = tabLabels[i];
                 if (label != null)
                     label.sizeDelta = new Vector2(width - 50f, label.sizeDelta.y);
             }
+        }
+    }
+
+    private void CacheTabLabels()
+    {
+        if (tabSelectionGraphics == null)
+            return;
+
+        tabLabels = new RectTransform[tabSelectionGraphics.Length];
+        for (int i = 0; i < tabSelectionGraphics.Length; i++)
+        {
+            Image graphic = tabSelectionGraphics[i];
+            if (graphic != null && graphic.transform.parent != null)
+                tabLabels[i] = graphic.transform.parent.Find("Label") as RectTransform;
         }
     }
 
@@ -186,7 +196,7 @@ public sealed class NotebookPageController : MonoBehaviour
         listenersRegistered = false;
     }
 
-    private bool ValidateReferences()
+    private void ValidateReferences()
     {
         bool valid =
             caseOverviewPage != null &&
@@ -205,8 +215,6 @@ public sealed class NotebookPageController : MonoBehaviour
 
         if (!valid)
             Debug.LogError("[Notebook] NotebookPageController has missing Inspector references.", this);
-
-        return valid;
     }
 
     private void ShowCaseOverview() => ShowPage(0);

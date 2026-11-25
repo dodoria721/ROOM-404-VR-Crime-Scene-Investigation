@@ -87,7 +87,6 @@ public sealed class DeductionController : MonoBehaviour
 
         if (!IsDeductionAvailable)
         {
-            Debug.Log("[최종 추리] 필수 증거가 부족하여 아직 범인을 선택할 수 없습니다.", this);
             return false;
         }
 
@@ -112,7 +111,6 @@ public sealed class DeductionController : MonoBehaviour
 
         if (resultController.HasResult)
         {
-            Debug.Log("[최종 추리] 결과가 이미 확정되어 추가 선택을 무시합니다.", this);
             return false;
         }
 
@@ -156,7 +154,6 @@ public sealed class DeductionController : MonoBehaviour
             return;
 
         IsDeductionAvailable = isAvailable;
-        Debug.Log($"[최종 추리] 범인 선택 가능 상태: {IsDeductionAvailable}", this);
         DeductionAvailabilityChanged?.Invoke(IsDeductionAvailable);
     }
 

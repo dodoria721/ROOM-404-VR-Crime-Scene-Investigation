@@ -71,7 +71,6 @@ public class EvidenceNotificationUIController : MonoBehaviour
         UnsubscribeFromManager();
         subscribedManager = manager;
         subscribedManager.EvidenceRegistered += OnEvidenceRegistered;
-        Debug.Log("[Evidence Notification] EvidenceRegistered 이벤트 구독 완료.", this);
         return true;
     }
 
@@ -92,10 +91,6 @@ public class EvidenceNotificationUIController : MonoBehaviour
             return;
 
         pendingNotifications.Enqueue(evidence);
-        Debug.Log(
-            $"[Evidence Notification] 수집 이벤트 수신: {evidence.Id} - {evidence.EvidenceName} " +
-            $"(대기 {pendingNotifications.Count})",
-            this);
 
         if (notificationCoroutine == null)
             notificationCoroutine = StartCoroutine(ProcessNotificationQueue());
@@ -121,30 +116,23 @@ public class EvidenceNotificationUIController : MonoBehaviour
 
     private void ShowNotification(EvidenceData evidence)
     {
-        SetStaticText();
-
         if (evidenceIdText != null)
             evidenceIdText.text = $"{evidence.Id}  ·";
 
         if (evidenceNameText != null)
             evidenceNameText.text = evidence.EvidenceName;
 
-        int requiredCount = EvidenceManager.Instance != null
-            ? EvidenceManager.Instance.RequiredCount
-            : 0;
+        EvidenceManager manager = EvidenceManager.Instance;
+        int requiredCount = manager != null ? manager.RequiredCount : 0;
 
         if (requiredProgressText != null)
-            requiredProgressText.text = $"{requiredCount} / {RequiredEvidenceTarget}";
+            requiredProgressText.SetText("{0} / {1}", requiredCount, RequiredEvidenceTarget);
 
         if (requiredProgressFill != null)
             requiredProgressFill.fillAmount = Mathf.Clamp01(
                 requiredCount / (float)RequiredEvidenceTarget);
 
         SetPanelVisible(true);
-        Debug.Log(
-            $"[Evidence Notification] 알림 표시: {evidence.Id} - {evidence.EvidenceName}, " +
-            $"Panel Active={notificationPanel != null && notificationPanel.activeInHierarchy}",
-            this);
     }
 
     private void SetStaticText()

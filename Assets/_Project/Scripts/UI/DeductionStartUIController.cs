@@ -33,6 +33,7 @@ public sealed class DeductionStartUIController : MonoBehaviour
     private EvidenceManager subscribedManager;
     private Coroutine managerSubscribeRoutine;
     private bool unlockPromptDismissed;
+    private int lastDisplayedRequiredCount = -1;
 
     public bool CanOpenDeduction =>
         isActiveAndEnabled &&
@@ -98,7 +99,6 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
         if (manager == null || !manager.CanDeduce)
         {
-            Debug.Log("[추리 시작 UI] 필수 증거가 부족하여 추리판을 열 수 없습니다.", this);
             RefreshView();
             return;
         }
@@ -112,7 +112,6 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
         if (resultController.HasResult)
         {
-            Debug.Log("[추리 시작 UI] 결과가 이미 확정되어 추리판을 다시 열 수 없습니다.", this);
             RefreshView();
             return;
         }
@@ -155,10 +154,7 @@ public sealed class DeductionStartUIController : MonoBehaviour
         }
 
         if (resultController != null && resultController.HasResult)
-        {
-            Debug.Log("[추리 시작 UI] 결과가 이미 확정되어 용의자 선택 화면을 열지 않습니다.", this);
             return;
-        }
 
         if (deductionUIController == null)
         {
@@ -168,15 +164,21 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
         // 선택값은 CaseTypeSelectionController에 유지한 채 화면만 순서대로 전환한다.
         caseTypeSelectionController.ClosePanel();
+        bool wasPanelOpen = deductionUIController.IsPanelOpen;
         deductionUIController.OpenPanel();
 
-        if (!deductionUIController.IsPanelOpen)
+        if (deductionUIController.IsPanelOpen)
         {
-            Debug.LogWarning(
-                "[추리 시작 UI] 용의자 선택 화면을 열지 못해 사건 유형 화면으로 복귀합니다.",
-                this);
-            caseTypeSelectionController.OpenPanel();
+            // Opening a closed panel already refreshes via PanelVisibilityChanged.
+            if (wasPanelOpen)
+                RefreshView();
+            return;
         }
+
+        Debug.LogWarning(
+            "[추리 시작 UI] 용의자 선택 화면을 열지 못해 사건 유형 화면으로 복귀합니다.",
+            this);
+        caseTypeSelectionController.OpenPanel();
         RefreshView();
     }
 
@@ -203,13 +205,15 @@ public sealed class DeductionStartUIController : MonoBehaviour
             subscribedManager.DeductionUnlocked += HandleDeductionUnlocked;
         }
 
-        RefreshView();
         return true;
     }
 
     private void HandleEvidenceRegistered(EvidenceData _)
     {
-        RefreshView();
+        // The final required evidence fires DeductionUnlocked after registration.
+        if (subscribedManager != null && !subscribedManager.CanDeduce &&
+            subscribedManager.RequiredCount != lastDisplayedRequiredCount)
+            RefreshView();
     }
 
     private void HandleDeductionUnlocked()
@@ -227,7 +231,9 @@ public sealed class DeductionStartUIController : MonoBehaviour
 
     private void HandlePanelVisibilityChanged(bool _)
     {
-        RefreshView();
+        // A result-driven close is handled by ResultDetermined.
+        if (resultController == null || !resultController.HasResult)
+            RefreshView();
     }
 
     private void HandleResultDetermined(SuspectId _, bool __)
@@ -259,10 +265,11 @@ public sealed class DeductionStartUIController : MonoBehaviour
             deductionStartButton.interactable = CanOpenDeduction;
 
         int collectedRequired = hasManager ? manager.RequiredCount : 0;
+        lastDisplayedRequiredCount = collectedRequired;
         int total = Mathf.Max(1, requiredEvidenceTotal);
 
         if (requiredEvidenceProgressText != null)
-            requiredEvidenceProgressText.text = $"{collectedRequired} / {total}";
+            requiredEvidenceProgressText.SetText("{0} / {1}", collectedRequired, total);
 
         if (requiredEvidenceIndicators != null)
         {

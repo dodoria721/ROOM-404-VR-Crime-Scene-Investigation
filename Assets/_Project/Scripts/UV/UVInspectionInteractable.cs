@@ -39,7 +39,6 @@ public sealed class UVInspectionInteractable : MonoBehaviour
     {
         if (uvRevealable == null || !uvRevealable.IsDiscovered)
         {
-            Debug.Log("[UV Inspection] UV로 발견하기 전에는 상세 정보를 표시하지 않습니다.", this);
             return;
         }
 

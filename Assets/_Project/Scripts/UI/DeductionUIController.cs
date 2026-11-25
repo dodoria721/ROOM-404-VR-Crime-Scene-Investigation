@@ -111,7 +111,6 @@ public sealed class DeductionUIController : MonoBehaviour
 
         if (!deductionController.IsDeductionAvailable)
         {
-            Debug.Log("[사건 추리 UI] 필수 증거가 부족하여 추리 패널을 열 수 없습니다.", this);
             return;
         }
 

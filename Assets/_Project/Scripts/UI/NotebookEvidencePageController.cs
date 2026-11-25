@@ -102,10 +102,10 @@ public sealed class NotebookEvidencePageController : MonoBehaviour
         int requiredCount = manager != null ? manager.RequiredCount : 0;
 
         if (collectedCountText != null)
-            collectedCountText.text = $"{collectedCount} / 6";
+            collectedCountText.SetText("{0} / 6", collectedCount);
 
         if (requiredCountText != null)
-            requiredCountText.text = $"{requiredCount} / 4";
+            requiredCountText.SetText("{0} / 4", requiredCount);
 
         for (int i = 0; i < EvidenceIds.Length; i++)
         {
@@ -151,13 +151,13 @@ public sealed class NotebookEvidencePageController : MonoBehaviour
 
     public void ShowEvidenceGrid()
     {
-        if (evidenceGrid != null)
+        if (evidenceGrid != null && !evidenceGrid.activeSelf)
             evidenceGrid.SetActive(true);
 
-        if (evidenceDetailPanel != null)
+        if (evidenceDetailPanel != null && evidenceDetailPanel.activeSelf)
             evidenceDetailPanel.SetActive(false);
 
-        if (pageNavigationRoot != null)
+        if (pageNavigationRoot != null && !pageNavigationRoot.activeSelf)
             pageNavigationRoot.SetActive(true);
     }
 
@@ -179,18 +179,8 @@ public sealed class NotebookEvidencePageController : MonoBehaviour
         if (detailMetadataIdText != null)
             detailMetadataIdText.text = data.Id;
 
-        if (detailEvidenceNameText != null)
-            detailEvidenceNameText.text = data.EvidenceName;
-
         if (detailEvidenceTypeText != null)
             detailEvidenceTypeText.text = IsRequiredEvidence(data.Id) ? "필수 증거" : "선택 증거";
-
-        if (detailDescriptionText != null)
-        {
-            detailDescriptionText.text = string.IsNullOrWhiteSpace(data.Description)
-                ? "등록된 설명 정보가 없습니다."
-                : data.Description;
-        }
 
         if (detailStatusText != null)
             detailStatusText.text = $"✓ {data.Id}  확보 완료";

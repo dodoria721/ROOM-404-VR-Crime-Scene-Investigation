@@ -156,7 +156,6 @@ public sealed class CaseTypeSelectionController : MonoBehaviour
             return;
 
         NextStepRequested?.Invoke(selectedCaseType);
-        Debug.Log($"[Case Type] 다음 단계 요청: {GetDisplayName(selectedCaseType)}", this);
     }
 
     private void OpenNotebook()

@@ -98,7 +98,6 @@ public sealed class UVRevealable : MonoBehaviour
 
         if (!IsDiscovered)
         {
-            Debug.Log("[UV Evidence] UV 조사로 흔적을 먼저 발견해야 합니다.", this);
             return false;
         }
 
@@ -111,7 +110,6 @@ public sealed class UVRevealable : MonoBehaviour
         SynchronizeCollectionState();
         if (IsEvidenceCollected)
         {
-            Debug.Log($"[UV Evidence] 이미 수집된 증거입니다: {evidenceSource.Id}", this);
             return false;
         }
 

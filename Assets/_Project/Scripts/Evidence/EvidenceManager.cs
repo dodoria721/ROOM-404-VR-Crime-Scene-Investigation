@@ -109,10 +109,7 @@ public class EvidenceManager : MonoBehaviour
         }
 
         if (!collectedIds.Add(data.Id))
-        {
-            Debug.Log($"이미 수집한 증거: {data.Id}");
             return false;
-        }
 
         // 호출자가 가진 데이터의 변경 가능성과 관계없이 수집 시점의 값을 보관한다.
         var storedData = new EvidenceData(data.Id, data.EvidenceName, data.Description);
@@ -121,10 +118,9 @@ public class EvidenceManager : MonoBehaviour
         if (RequiredEvidenceIds.Contains(storedData.Id))
             requiredIds.Add(storedData.Id);
 
-        Debug.Log($"[증거 수집] {storedData.Id} - {storedData.EvidenceName}");
         Debug.Log(
-            $"수집 현황: {CollectedCount}/{ValidEvidenceIds.Count}, " +
-            $"필수: {RequiredCount}/{RequiredEvidenceIds.Count}");
+            $"[증거 수집] {storedData.Id} {storedData.EvidenceName} | " +
+            $"전체 {CollectedCount}/{ValidEvidenceIds.Count} | 필수 {RequiredCount}/{RequiredEvidenceIds.Count}", this);
 
         EvidenceRegistered?.Invoke(storedData);
 

@@ -31,7 +31,6 @@ public sealed class ResultController : MonoBehaviour
     {
         if (HasResult)
         {
-            Debug.Log("[최종 추리] 결과가 이미 확정되어 추가 제출을 무시합니다.", this);
             return false;
         }
 

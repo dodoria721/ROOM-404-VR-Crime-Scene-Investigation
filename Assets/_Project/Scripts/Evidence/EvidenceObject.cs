@@ -64,7 +64,6 @@ public class EvidenceObject : MonoBehaviour
 
         isInspecting = true;
 
-        Debug.Log($"[증거 조사 시작] {evidenceId} - {evidenceName}");
 
         InspectionStarted?.Invoke(this);
     }
@@ -76,7 +75,6 @@ public class EvidenceObject : MonoBehaviour
 
         isInspecting = false;
 
-        Debug.Log($"[증거 조사 종료] {evidenceId}");
 
         InspectionEnded?.Invoke(this);
     }
