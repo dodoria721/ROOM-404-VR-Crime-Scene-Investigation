@@ -108,6 +108,11 @@ public sealed class HandPoseController : MonoBehaviour
         [HideInInspector, SerializeField] private Quaternion closedIntermediate = Quaternion.identity;
         [HideInInspector, SerializeField] private Quaternion closedDistal = Quaternion.identity;
 
+        private Quaternion pointMetacarpal;
+        private Quaternion pointProximal;
+        private Quaternion pointIntermediate;
+        private Quaternion pointDistal;
+
         public void CaptureOpen()
         {
             Capture(metacarpal, ref openMetacarpal);
@@ -140,18 +145,42 @@ public sealed class HandPoseController : MonoBehaviour
             SetFromPose(handRoot, pose, distal, ref closedDistal);
         }
 
-        public void Apply(
-            float inputAmount, Transform handRoot, HandPoseData overridePose, float overrideWeight)
+        public void CachePointPose(Transform handRoot, HandPoseData pose)
         {
-            ApplyJoint(metacarpal, openMetacarpal, closedMetacarpal,
-                inputAmount, handRoot, overridePose, overrideWeight);
-            ApplyJoint(proximal, openProximal, closedProximal,
-                inputAmount, handRoot, overridePose, overrideWeight);
-            ApplyJoint(intermediate, openIntermediate, closedIntermediate,
-                inputAmount, handRoot, overridePose, overrideWeight);
-            ApplyJoint(distal, openDistal, closedDistal,
-                inputAmount, handRoot, overridePose, overrideWeight);
+            pointMetacarpal = openMetacarpal;
+            pointProximal = openProximal;
+            pointIntermediate = openIntermediate;
+            pointDistal = openDistal;
+            SetFromPose(handRoot, pose, metacarpal, ref pointMetacarpal);
+            SetFromPose(handRoot, pose, proximal, ref pointProximal);
+            SetFromPose(handRoot, pose, intermediate, ref pointIntermediate);
+            SetFromPose(handRoot, pose, distal, ref pointDistal);
         }
+
+        public void Apply(float inputAmount, float pointWeight)
+        {
+            ApplyJoint(metacarpal, openMetacarpal, closedMetacarpal, inputAmount, pointMetacarpal, pointWeight);
+            ApplyJoint(proximal, openProximal, closedProximal, inputAmount, pointProximal, pointWeight);
+            ApplyJoint(intermediate, openIntermediate, closedIntermediate, inputAmount, pointIntermediate, pointWeight);
+            ApplyJoint(distal, openDistal, closedDistal, inputAmount, pointDistal, pointWeight);
+        }
+
+#if UNITY_EDITOR
+        public void PreviewAsset(Transform handRoot, HandPoseData pose, float amount, bool useCapturedClosed)
+        {
+            PreviewJoint(metacarpal, openMetacarpal, closedMetacarpal);
+            PreviewJoint(proximal, openProximal, closedProximal);
+            PreviewJoint(intermediate, openIntermediate, closedIntermediate);
+            PreviewJoint(distal, openDistal, closedDistal);
+
+            void PreviewJoint(Transform joint, Quaternion open, Quaternion capturedClosed)
+            {
+                Quaternion closed = useCapturedClosed ? capturedClosed : open;
+                SetFromPose(handRoot, pose, joint, ref closed);
+                ApplyJoint(joint, open, closed, amount);
+            }
+        }
+#endif
 
         public void AddJoints(List<Transform> destination)
         {
@@ -205,25 +234,14 @@ public sealed class HandPoseController : MonoBehaviour
         }
 
         private static void ApplyJoint(
-            Transform joint,
-            Quaternion open,
-            Quaternion closed,
-            float inputAmount,
-            Transform handRoot,
-            HandPoseData overridePose,
-            float overrideWeight)
+            Transform joint, Quaternion open, Quaternion closed, float inputAmount,
+            Quaternion point = default, float pointWeight = 0f)
         {
-            if (joint == null)
-                return;
-
-            Quaternion result = Quaternion.Slerp(open, closed, inputAmount);
-            if (overrideWeight > 0f && overridePose != null &&
-                overridePose.TryGetLocalRotation(handRoot, joint, out Quaternion objectRotation))
+            if (joint != null)
             {
-                result = Quaternion.Slerp(result, objectRotation, overrideWeight);
+                Quaternion rotation = Quaternion.Slerp(open, closed, inputAmount);
+                joint.localRotation = pointWeight > 0f ? Quaternion.Slerp(rotation, point, pointWeight) : rotation;
             }
-
-            joint.localRotation = result;
         }
 
         private static void AddUnique(List<Transform> destination, Transform joint)
@@ -250,8 +268,6 @@ public sealed class HandPoseController : MonoBehaviour
     [Header("Motion")]
     [Min(0.001f)]
     [SerializeField] private float inputSmoothTime = 0.06f;
-    [Min(0.001f)]
-    [SerializeField] private float grabPoseBlendTime = 0.09f;
     [SerializeField] private bool clampInput = true;
 
     [Header("Automatic Curl Calibration")]
@@ -268,6 +284,7 @@ public sealed class HandPoseController : MonoBehaviour
     [Header("Generated Input Pose References")]
     [SerializeField] private HandPoseData generatedGripPose;
     [SerializeField] private HandPoseData generatedTriggerPose;
+    [SerializeField] private HandPoseData uiPointPose;
 
     [Header("Captured Pose State")]
     [SerializeField, HideInInspector] private bool openPoseCaptured;
@@ -277,19 +294,17 @@ public sealed class HandPoseController : MonoBehaviour
     private float currentTrigger;
     private float gripVelocity;
     private float triggerVelocity;
-    private float grabPoseBlend;
-    private float grabPoseBlendVelocity;
-    private UnityEngine.Object activePoseOwner;
-    private HandPoseData activeGrabPose;
-    private bool targetGrabPoseActive;
     private bool warnedMissingInput;
+    private bool hasUIPointPose;
+    private bool uiPointRequested;
+    private float uiPointWeight;
+    private float uiPointVelocity;
 
     public HandSide Side => handSide;
     public float CurrentGrip => currentGrip;
     public float CurrentTrigger => currentTrigger;
     public bool HasOpenPose => openPoseCaptured;
     public bool HasClosedPose => closedPoseCaptured;
-    public HandPoseData ActiveGrabPose => activeGrabPose;
     public bool InvertCurlDirection => invertCurlDirection;
     public Vector3 PalmNormalLocal => palmNormalLocal;
     public HandPoseData GeneratedGripPose => generatedGripPose;
@@ -303,6 +318,11 @@ public sealed class HandPoseController : MonoBehaviour
             ApplyGeneratedInputPoses(generatedGripPose, generatedTriggerPose);
         else if (!closedPoseCaptured)
             CopyOpenPoseToClosed();
+
+        hasUIPointPose = handSide == HandSide.Right && uiPointPose != null &&
+                         uiPointPose.Side == handSide && uiPointPose.Kind == HandPoseKind.Point;
+        if (hasUIPointPose)
+            ForEachFinger(finger => finger.CachePointPose(transform, uiPointPose));
     }
 
     private void OnEnable()
@@ -311,11 +331,6 @@ public sealed class HandPoseController : MonoBehaviour
         currentTrigger = 0f;
         gripVelocity = 0f;
         triggerVelocity = 0f;
-        grabPoseBlend = 0f;
-        grabPoseBlendVelocity = 0f;
-        activePoseOwner = null;
-        activeGrabPose = null;
-        targetGrabPoseActive = false;
         warnedMissingInput = false;
     }
 
@@ -332,9 +347,6 @@ public sealed class HandPoseController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (targetGrabPoseActive && activePoseOwner == null)
-            targetGrabPoseActive = false;
-
         currentGrip = Mathf.SmoothDamp(
             currentGrip, ReadInput(gripInput), ref gripVelocity, inputSmoothTime,
             Mathf.Infinity, Time.deltaTime);
@@ -342,27 +354,31 @@ public sealed class HandPoseController : MonoBehaviour
             currentTrigger, ReadInput(triggerInput), ref triggerVelocity, inputSmoothTime,
             Mathf.Infinity, Time.deltaTime);
 
-        float targetBlend = targetGrabPoseActive && activeGrabPose != null ? 1f : 0f;
-        grabPoseBlend = Mathf.SmoothDamp(
-            grabPoseBlend, targetBlend, ref grabPoseBlendVelocity, grabPoseBlendTime,
-            Mathf.Infinity, Time.deltaTime);
-
-        ApplyPose(currentGrip, currentTrigger, activeGrabPose, grabPoseBlend);
-
-        if (!targetGrabPoseActive && grabPoseBlend <= 0.001f)
+        if (hasUIPointPose && (uiPointRequested || uiPointWeight > 0f))
         {
-            grabPoseBlend = 0f;
-            activeGrabPose = null;
-            activePoseOwner = null;
+            float target = uiPointRequested ? 1f : 0f;
+            uiPointWeight = Mathf.SmoothDamp(uiPointWeight, target, ref uiPointVelocity,
+                inputSmoothTime, Mathf.Infinity, Time.deltaTime);
+            if (Mathf.Abs(uiPointWeight - target) < 0.001f)
+            {
+                uiPointWeight = target;
+                uiPointVelocity = 0f;
+            }
         }
+
+        ApplyPose(currentGrip, currentTrigger, uiPointWeight);
+    }
+
+    public void SetUIPointMode(bool enabled)
+    {
+        if (handSide == HandSide.Right)
+            uiPointRequested = enabled;
     }
 
     private void OnDisable()
     {
-        activePoseOwner = null;
-        activeGrabPose = null;
-        targetGrabPoseActive = false;
-        grabPoseBlend = 0f;
+        uiPointWeight = 0f;
+        uiPointVelocity = 0f;
         if (openPoseCaptured)
             ApplyPoseImmediate(0f, 0f);
     }
@@ -463,30 +479,34 @@ public sealed class HandPoseController : MonoBehaviour
 
     public void ApplyPoseImmediate(float gripAmount, float triggerAmount)
     {
-        ApplyPose(gripAmount, triggerAmount, null, 0f);
+        ApplyPose(gripAmount, triggerAmount);
     }
 
+#if UNITY_EDITOR
     public void ApplyDataPoseImmediate(HandPoseData pose, float weight)
     {
-        ApplyPose(0f, 0f, pose, Mathf.Clamp01(weight));
+        weight = Mathf.Clamp01(weight);
+        ForEachFinger(finger => finger.PreviewAsset(transform, pose, weight, false));
     }
 
-    public void SetGrabPose(UnityEngine.Object owner, HandPoseData pose)
+    public void PreviewInputPose(float gripAmount, float triggerAmount)
     {
-        if (owner == null || pose == null || pose.Side != handSide)
+        // Awake resolves asset rotations in Play Mode. In Edit Mode, read the
+        // current assets without changing the captured or serialized rotations.
+        if (generatedGripPose == null || generatedTriggerPose == null ||
+            generatedGripPose.Side != handSide || generatedTriggerPose.Side != handSide)
+        {
+            ApplyPoseImmediate(gripAmount, triggerAmount);
             return;
+        }
 
-        activePoseOwner = owner;
-        activeGrabPose = pose;
-        targetGrabPoseActive = true;
+        thumb.PreviewAsset(transform, generatedGripPose, gripAmount, true);
+        middle.PreviewAsset(transform, generatedGripPose, gripAmount, true);
+        ring.PreviewAsset(transform, generatedGripPose, gripAmount, true);
+        little.PreviewAsset(transform, generatedGripPose, gripAmount, true);
+        index.PreviewAsset(transform, generatedTriggerPose, triggerAmount, true);
     }
-
-    public void ClearGrabPose(UnityEngine.Object owner)
-    {
-        if (owner != null && activePoseOwner != owner)
-            return;
-        targetGrabPoseActive = false;
-    }
+#endif
 
     public Transform[] GetControlledJoints()
     {
@@ -500,8 +520,7 @@ public sealed class HandPoseController : MonoBehaviour
         return GetFinger(finger).GetJoints();
     }
 
-    private void ApplyPose(
-        float gripAmount, float triggerAmount, HandPoseData overridePose, float overrideWeight)
+    private void ApplyPose(float gripAmount, float triggerAmount, float pointWeight = 0f)
     {
         if (clampInput)
         {
@@ -509,11 +528,11 @@ public sealed class HandPoseController : MonoBehaviour
             triggerAmount = Mathf.Clamp01(triggerAmount);
         }
 
-        thumb.Apply(gripAmount, transform, overridePose, overrideWeight);
-        middle.Apply(gripAmount, transform, overridePose, overrideWeight);
-        ring.Apply(gripAmount, transform, overridePose, overrideWeight);
-        little.Apply(gripAmount, transform, overridePose, overrideWeight);
-        index.Apply(triggerAmount, transform, overridePose, overrideWeight);
+        thumb.Apply(gripAmount, pointWeight);
+        middle.Apply(gripAmount, pointWeight);
+        ring.Apply(gripAmount, pointWeight);
+        little.Apply(gripAmount, pointWeight);
+        index.Apply(triggerAmount, pointWeight);
     }
 
     private float ReadInput(InputActionReference reference)
@@ -578,7 +597,6 @@ public sealed class HandPoseController : MonoBehaviour
     private void OnValidate()
     {
         inputSmoothTime = Mathf.Max(0.001f, inputSmoothTime);
-        grabPoseBlendTime = Mathf.Max(0.001f, grabPoseBlendTime);
         if (palmNormalLocal.sqrMagnitude < 0.0001f)
             palmNormalLocal = Vector3.forward;
     }

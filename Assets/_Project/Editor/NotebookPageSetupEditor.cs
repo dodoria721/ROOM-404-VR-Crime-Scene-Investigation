@@ -13,6 +13,8 @@ public static class NotebookPageSetupEditor
     const string UiMaterialPath = "Assets/_Project/Materials/UI/M_UI_AlwaysOnTop.mat";
     const string TextMaterialPath = "Assets/_Project/Materials/UI/M_NotoSansKR_Overlay.mat";
     const string AssetRoot = "Assets/_Project/UI/Notebook/Pages/";
+    const string DeductionEntryName = "DeductionReentryFooter";
+    const string DeductionEntryMenu = "ROOM 404/UI/Configure Notebook Deduction Entry";
 
     static readonly string[] EvidenceIds = { "E01", "E02", "E03", "E04", "E05", "E06" };
     static readonly string[] EvidenceNames =
@@ -64,7 +66,7 @@ public static class NotebookPageSetupEditor
         Rebuild(victimPage.transform, BuildVictim);
         Rebuild(suspectPage.transform, BuildSuspects);
         Rebuild(evidencePage.transform, p => BuildEvidence(p, evidencePage, nav.gameObject));
-        Rebuild(memoPage.transform, BuildMemo);
+        Rebuild(memoPage.transform, BuildMemo, memoPage.transform.Find(DeductionEntryName));
 
         Button[] buttons = new Button[5];
         Image[] graphics = new Image[5];
@@ -355,10 +357,138 @@ public static class NotebookPageSetupEditor
         RectTransform page = Rect(name, parent, 0, 0, 1060, 856); page.gameObject.SetActive(false); return page.gameObject;
     }
 
-    static void Rebuild(Transform page, Action<Transform> builder)
+    static void Rebuild(Transform page, Action<Transform> builder, Transform preserve = null)
     {
-        for (int i = page.childCount - 1; i >= 0; i--) Undo.DestroyObjectImmediate(page.GetChild(i).gameObject);
+        for (int i = page.childCount - 1; i >= 0; i--)
+        {
+            Transform child = page.GetChild(i);
+            if (child != preserve)
+                Undo.DestroyObjectImmediate(child.gameObject);
+        }
         builder(page);
+    }
+
+    [MenuItem(DeductionEntryMenu, true)]
+    static bool CanConfigureDeductionEntry() =>
+        !EditorApplication.isPlayingOrWillChangePlaymode &&
+        PrefabStageUtility.GetCurrentPrefabStage() == null &&
+        SceneManager.GetActiveScene().path == ScenePath;
+
+    [MenuItem(DeductionEntryMenu)]
+    static void ConfigureDeductionEntry()
+    {
+        if (!CanConfigureDeductionEntry())
+            return;
+
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject canvas = FindCanvas(scene);
+        var memo = canvas != null
+            ? canvas.transform.Find("NotebookRoot/NotebookContent/MemoPage") as RectTransform : null;
+        var navigation = canvas != null ? canvas.transform.Find("NotebookRoot/PageNavigation") : null;
+        if (memo == null || navigation == null)
+            throw new InvalidOperationException("기존 MemoPage 또는 PageNavigation을 찾지 못했습니다.");
+
+        Transform existing = memo.Find(DeductionEntryName);
+        if (existing != null)
+        {
+            if (existing.GetComponent<NotebookDeductionEntry>() == null)
+                throw new InvalidOperationException("같은 이름의 사용자 UI가 이미 있습니다.");
+            Selection.activeGameObject = existing.gameObject;
+            return;
+        }
+        if (memo.Find("StartDeductionButton") != null)
+            throw new InvalidOperationException("기존 StartDeductionButton을 먼저 확인해 주세요.");
+
+        DeductionStartUIController entry = null;
+        foreach (var root in scene.GetRootGameObjects())
+        foreach (var candidate in root.GetComponentsInChildren<DeductionStartUIController>(true))
+        {
+            if (entry != null)
+                throw new InvalidOperationException("DeductionStartUIController가 여러 개입니다.");
+            entry = candidate;
+        }
+        if (entry == null)
+            throw new InvalidOperationException("DeductionStartUIController를 찾지 못했습니다.");
+        var entryState = new SerializedObject(entry);
+        var result = entryState.FindProperty("resultController").objectReferenceValue as ResultController;
+        var types = entryState.FindProperty("caseTypeSelectionController").objectReferenceValue as CaseTypeSelectionController;
+        var notebook = canvas.GetComponent<NotebookToggleController>();
+        if (result == null || types == null || notebook == null ||
+            new SerializedObject(types).FindProperty("notebookToggleController").objectReferenceValue != notebook)
+            throw new InvalidOperationException("추리 컨트롤러의 결과 및 수첩 참조를 확인해 주세요.");
+
+        var title = memo.Find("Title")?.GetComponent<TMP_Text>();
+        var checkbox = memo.Find("Checkbox0")?.GetComponent<Image>();
+        if (title == null || title.font == null || checkbox == null)
+            throw new InvalidOperationException("기존 메모의 폰트와 체크박스 스타일을 찾지 못했습니다.");
+
+        // The shipped memo ends at y=674 and navigation starts at y=790.
+        // Check current scene rectangles as well, since the layout can be edited.
+        var footerArea = new Rect(memo.rect.xMin + 100, memo.rect.yMax - 772, 900, 54);
+        EnsureFooterFits(memo, navigation, footerArea);
+
+        Undo.IncrementCurrentGroup();
+        int group = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Configure Notebook Deduction Entry");
+        layer = memo.gameObject.layer;
+        font = title.font;
+        textMaterial = title.fontSharedMaterial;
+        uiMaterial = checkbox.material;
+
+        var footer = Rect(DeductionEntryName, memo, 100, 718, 900, 54);
+        var progress = Text("RequiredEvidenceProgress", footer, 0, 0, 340, 54,
+            "0 / 4", 26, "2B383D", FontStyles.Bold);
+        progress.alignment = TextAlignmentOptions.Left;
+
+        var target = Image("StartDeductionButton", footer, 620, 0, 280, 54, "30424B");
+        target.raycastTarget = true;
+        Border(target.gameObject, "BBA06D", 1.3f);
+        var button = Undo.AddComponent<Button>(target.gameObject);
+        button.targetGraphic = target;
+        button.interactable = false;
+        var colors = button.colors;
+        colors.disabledColor = new Color(0.62f, 0.64f, 0.65f, 0.72f);
+        colors.highlightedColor = C("E6CD94");
+        colors.selectedColor = C("E6CD94");
+        button.colors = colors;
+        Text("Label", target.rectTransform, 0, 0, 280, 54,
+            "최종 추리 시작", 25, "F1E9D6", FontStyles.Bold).alignment = TextAlignmentOptions.Center;
+
+        var binder = new SerializedObject(Undo.AddComponent<NotebookDeductionEntry>(footer.gameObject));
+        Obj(binder, "deductionStart", entry);
+        Obj(binder, "result", result);
+        Obj(binder, "startButton", button);
+        Obj(binder, "progressText", progress);
+        binder.ApplyModifiedProperties();
+
+        Undo.CollapseUndoOperations(group);
+        EditorSceneManager.MarkSceneDirty(scene);
+        Selection.activeGameObject = footer.gameObject;
+    }
+
+    static void EnsureFooterFits(RectTransform memo, Transform navigation, Rect footer)
+    {
+        if (!memo.rect.Contains(footer.min) || !memo.rect.Contains(footer.max))
+            throw new InvalidOperationException("메모 페이지의 하단 영역이 부족합니다.");
+
+        var corners = new Vector3[4];
+        foreach (Transform container in new Transform[] { memo, navigation })
+        foreach (Transform child in container)
+        {
+            if (child is not RectTransform rect)
+                continue;
+            rect.GetWorldCorners(corners);
+            Vector2 min = memo.InverseTransformPoint(corners[0]);
+            Vector2 max = min;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                Vector2 point = memo.InverseTransformPoint(corners[i]);
+                min = Vector2.Min(min, point);
+                max = Vector2.Max(max, point);
+            }
+            if (footer.Overlaps(UnityEngine.Rect.MinMaxRect(min.x, min.y, max.x, max.y)))
+                throw new InvalidOperationException($"'{child.name}'과(와) 겹쳐 추리 버튼 생성을 중단했습니다.");
+        }
     }
 
     static void LoadAssets()

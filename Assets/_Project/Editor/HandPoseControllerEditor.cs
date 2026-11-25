@@ -213,7 +213,7 @@ public sealed class HandPoseControllerEditor : Editor
         if (EditorGUI.EndChangeCheck())
         {
             BeginPreview(controller, PreviewMode.Input);
-            controller.ApplyPoseImmediate(previewGrip, previewTrigger);
+            controller.PreviewInputPose(previewGrip, previewTrigger);
             SceneView.RepaintAll();
         }
 

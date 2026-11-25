@@ -34,6 +34,14 @@ public sealed class DeductionStartUIController : MonoBehaviour
     private Coroutine managerSubscribeRoutine;
     private bool unlockPromptDismissed;
 
+    public bool CanOpenDeduction =>
+        isActiveAndEnabled &&
+        EvidenceManager.Instance != null && EvidenceManager.Instance.CanDeduce &&
+        resultController != null && !resultController.HasResult &&
+        caseTypeSelectionController != null && caseTypeSelectionController.CanOpenPanel &&
+        !caseTypeSelectionController.IsPanelOpen &&
+        deductionUIController != null && !deductionUIController.IsPanelOpen;
+
     private void Awake()
     {
         ResolveReferences();
@@ -116,11 +124,12 @@ public sealed class DeductionStartUIController : MonoBehaviour
             return;
         }
 
-        if (deductionUIController != null && deductionUIController.IsPanelOpen)
-            deductionUIController.ClosePanel();
+        if (!CanOpenDeduction)
+            return;
 
-        unlockPromptDismissed = true;
         caseTypeSelectionController.OpenPanel();
+        if (caseTypeSelectionController.IsPanelOpen)
+            unlockPromptDismissed = true;
 
         RefreshView();
     }
@@ -236,11 +245,6 @@ public sealed class DeductionStartUIController : MonoBehaviour
         bool isDeductionPanelOpen = deductionUIController != null && deductionUIController.IsPanelOpen;
         bool isPanelOpen = isCaseTypePanelOpen || isDeductionPanelOpen;
         bool hasResult = resultController != null && resultController.HasResult;
-        bool hasRequiredReferences = caseTypeSelectionController != null &&
-                                     deductionUIController != null &&
-                                     resultController != null;
-        bool canOpen = hasAllRequiredEvidence && !isPanelOpen && !hasResult && hasRequiredReferences;
-
         if (startAreaRoot != null)
         {
             bool shouldShowStartArea = hasAllRequiredEvidence &&
@@ -252,7 +256,7 @@ public sealed class DeductionStartUIController : MonoBehaviour
         }
 
         if (deductionStartButton != null)
-            deductionStartButton.interactable = canOpen;
+            deductionStartButton.interactable = CanOpenDeduction;
 
         int collectedRequired = hasManager ? manager.RequiredCount : 0;
         int total = Mathf.Max(1, requiredEvidenceTotal);

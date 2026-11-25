@@ -61,7 +61,10 @@ public sealed class CaseTypeSelectionController : MonoBehaviour
 
     public bool HasSelection => selectedCaseType != CaseType.None;
     public CaseType SelectedCaseType => selectedCaseType;
-    public bool IsPanelOpen => caseTypeRoot != null && caseTypeRoot.activeSelf;
+    public bool IsPanelOpen => caseTypeRoot != null && caseTypeRoot.activeInHierarchy;
+    public bool CanOpenPanel => isActiveAndEnabled && caseTypeRoot != null &&
+                                (caseTypeRoot.transform.parent == null ||
+                                 caseTypeRoot.transform.parent.gameObject.activeInHierarchy);
 
     private void Awake()
     {
@@ -100,12 +103,15 @@ public sealed class CaseTypeSelectionController : MonoBehaviour
             return;
         }
 
-        if (notebookToggleController != null && notebookToggleController.IsNotebookOpen)
-            notebookToggleController.CloseNotebook();
+        if (!CanOpenPanel)
+            return;
 
         RefreshRequiredEvidence();
         RefreshSelectionVisuals();
         caseTypeRoot.SetActive(true);
+
+        if (IsPanelOpen && notebookToggleController != null && notebookToggleController.IsNotebookOpen)
+            notebookToggleController.CloseNotebook();
     }
 
     public void ClosePanel()

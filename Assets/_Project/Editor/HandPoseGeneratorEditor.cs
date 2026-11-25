@@ -6,13 +6,11 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public static class HandPoseGeneratorEditor
 {
     private const string PoseRoot = "Assets/_Project/HandPoses/Generated";
     private const string DefaultPoseRoot = PoseRoot + "/Defaults";
-    private const string ObjectPoseRoot = PoseRoot + "/Objects";
 
     private sealed class PoseProfile
     {
@@ -23,16 +21,6 @@ public static class HandPoseGeneratorEditor
             Angles[finger] = angles;
             return this;
         }
-    }
-
-    private sealed class ObjectPoseTarget
-    {
-        public XRGrabInteractable Grab;
-        public string Key;
-        public Vector3 Size;
-        public PoseProfile Profile;
-        public bool KeepIndexInput;
-        public string Notes;
     }
 
     private readonly struct PalmFrame
@@ -70,69 +58,6 @@ public static class HandPoseGeneratorEditor
 
         AssetDatabase.SaveAssets();
         Debug.Log("[Hand Pose] 좌우 손의 기본 자세 초안 생성을 완료했습니다. Scene View에서 관절 교차와 엄지 방향을 확인하세요.");
-    }
-
-    [MenuItem("ROOM 404/XR/Configure Object Grab Poses")]
-    public static void ConfigureObjectGrabPoses()
-    {
-        if (!CanEditScene())
-            return;
-
-        HandPoseController[] controllers = FindSceneObjects<HandPoseController>();
-        HandPoseController left = controllers.FirstOrDefault(item => item.Side == HandSide.Left);
-        HandPoseController right = controllers.FirstOrDefault(item => item.Side == HandSide.Right);
-        if (left == null || right == null)
-        {
-            EditorUtility.DisplayDialog(
-                "ROOM 404 Grab Pose",
-                "좌우 HandPoseController가 모두 필요합니다. 먼저 Configure Hand Pose Controllers를 실행하세요.",
-                "확인");
-            return;
-        }
-
-        EnsureFolder(ObjectPoseRoot);
-        List<ObjectPoseTarget> targets = FindObjectPoseTargets();
-        if (targets.Count == 0)
-        {
-            Debug.LogWarning("[Hand Pose] 현재 Scene에서 지원 대상 XRGrabInteractable을 찾지 못했습니다.");
-            return;
-        }
-
-        int configured = 0;
-        foreach (ObjectPoseTarget target in targets)
-        {
-            HandPoseData leftPose = CreateOrUpdatePose(
-                left, target.Profile, HandPoseKind.ObjectGrab,
-                $"{target.Key}_Left", target.Notes, target.Size,
-                target.KeepIndexInput, true, ObjectPoseRoot);
-            HandPoseData rightPose = CreateOrUpdatePose(
-                right, target.Profile, HandPoseKind.ObjectGrab,
-                $"{target.Key}_Right", target.Notes, target.Size,
-                target.KeepIndexInput, true, ObjectPoseRoot);
-
-            if (leftPose == null || rightPose == null)
-                continue;
-
-            GrabHandPose component = target.Grab.GetComponent<GrabHandPose>();
-            if (component == null)
-                component = Undo.AddComponent<GrabHandPose>(target.Grab.gameObject);
-
-            SerializedObject serialized = new(component);
-            serialized.FindProperty("leftHandPose").objectReferenceValue = leftPose;
-            serialized.FindProperty("rightHandPose").objectReferenceValue = rightPose;
-            serialized.ApplyModifiedProperties();
-            EditorUtility.SetDirty(component);
-            configured++;
-        }
-
-        AssetDatabase.SaveAssets();
-        Scene scene = SceneManager.GetActiveScene();
-        if (scene.IsValid())
-            EditorSceneManager.MarkSceneDirty(scene);
-
-        Debug.Log(
-            $"[Hand Pose] {configured}개 Grab 오브젝트에 자세를 연결했습니다. " +
-            "Collider, Rigidbody, Attach Transform은 변경하지 않았으며 Scene은 자동 저장하지 않았습니다.");
     }
 
     public static void GenerateDefaultPosesForController(
@@ -175,24 +100,24 @@ public static class HandPoseGeneratorEditor
         string side = controller.Side.ToString();
         // Open is the calibration source. Never regenerate an existing Open asset.
         CreateOrUpdatePose(controller, open, HandPoseKind.Open, $"{side}_Open",
-            "현재 Open Pose를 그대로 캡처한 기준 자세.", Vector3.zero, false,
-            false, DefaultPoseRoot);
+            "현재 Open Pose를 그대로 캡처한 기준 자세.",
+            false);
         CreateOrUpdatePose(controller, idle, HandPoseKind.Idle, $"{side}_Idle",
-            "Open 기준의 가벼운 자연 굽힘 초안.", Vector3.zero, false,
-            askBeforeOverwrite, DefaultPoseRoot);
+            "Open 기준의 가벼운 자연 굽힘 초안.",
+            askBeforeOverwrite);
         HandPoseData gripPose = CreateOrUpdatePose(controller, grip, HandPoseKind.Grip,
             $"{side}_Grip", "Grip 입력용: 중지·약지·소지·엄지 굽힘 초안.",
-            Vector3.zero, false, askBeforeOverwrite, DefaultPoseRoot);
+            askBeforeOverwrite);
         HandPoseData triggerPose = CreateOrUpdatePose(controller, trigger, HandPoseKind.Trigger,
             $"{side}_Trigger", "Trigger 입력용: 검지 굽힘 초안.",
-            Vector3.zero, false, askBeforeOverwrite, DefaultPoseRoot);
+            askBeforeOverwrite);
         CreateOrUpdatePose(controller, point, HandPoseKind.Point, $"{side}_Point",
-            "검지는 펴고 나머지 손가락을 굽힌 포인팅 초안.", Vector3.zero, false,
-            askBeforeOverwrite, DefaultPoseRoot);
+            "검지는 펴고 나머지 손가락을 굽힌 포인팅 초안.",
+            askBeforeOverwrite);
         HandPoseData fullGripPose = CreateOrUpdatePose(
             controller, fullGrip, HandPoseKind.FullGrip, $"{side}_FullGrip",
-            "모든 손가락을 손바닥 방향으로 굽힌 주먹 초안.", Vector3.zero, false,
-            askBeforeOverwrite, DefaultPoseRoot);
+            "모든 손가락을 손바닥 방향으로 굽힌 주먹 초안.",
+            askBeforeOverwrite);
 
         if (gripPose != null && triggerPose != null)
         {
@@ -270,13 +195,9 @@ public static class HandPoseGeneratorEditor
         HandPoseKind kind,
         string assetName,
         string notes,
-        Vector3 sourceSize,
-        bool omitIndex,
-        bool askBeforeOverwrite,
-        string folder)
+        bool askBeforeOverwrite)
     {
-        EnsureFolder(folder);
-        string path = $"{folder}/{SanitizeFileName(assetName)}.asset";
+        string path = $"{DefaultPoseRoot}/{SanitizeFileName(assetName)}.asset";
         HandPoseData pose = AssetDatabase.LoadAssetAtPath<HandPoseData>(path);
         bool existed = pose != null;
         Dictionary<string, Quaternion> previousRotations = pose != null
@@ -311,11 +232,11 @@ public static class HandPoseGeneratorEditor
             AssetDatabase.CreateAsset(pose, path);
         }
 
-        List<HandPoseData.JointRotation> rotations = BuildRotations(controller, profile, omitIndex);
+        List<HandPoseData.JointRotation> rotations = BuildRotations(controller, profile);
         pose.ReplaceData(
             controller.Side, kind, assetName,
             notes + " 자동 생성 결과는 모델별 미세 조정이 필요한 초안입니다.",
-            sourceSize, true, rotations);
+            Vector3.zero, true, rotations);
         EditorUtility.SetDirty(pose);
         ReportPoseChanges(path, existed, previousRotations, rotations);
         return pose;
@@ -355,7 +276,7 @@ public static class HandPoseGeneratorEditor
     }
 
     private static List<HandPoseData.JointRotation> BuildRotations(
-        HandPoseController controller, PoseProfile profile, bool omitIndex)
+        HandPoseController controller, PoseProfile profile)
     {
         List<HandPoseData.JointRotation> result = new();
         PalmFrame palm = CalculatePalmFrame(controller);
@@ -363,9 +284,6 @@ public static class HandPoseGeneratorEditor
 
         foreach (HandFinger finger in Enum.GetValues(typeof(HandFinger)))
         {
-            if (omitIndex && finger == HandFinger.Index)
-                continue;
-
             Transform[] joints = controller.GetFingerJoints(finger);
             profile.Angles.TryGetValue(finger, out float[] angles);
             Vector3 autoAxisRoot = CalculateFingerFlexionAxis(
@@ -565,194 +483,6 @@ public static class HandPoseGeneratorEditor
         while (current != null && current.childCount > 0 && guard++ < 8)
             current = current.GetChild(0);
         return current == joint ? null : current;
-    }
-
-    private static List<ObjectPoseTarget> FindObjectPoseTargets()
-    {
-        List<ObjectPoseTarget> targets = new();
-        foreach (XRGrabInteractable grab in FindSceneObjects<XRGrabInteractable>())
-        {
-            string key = ResolveObjectKey(grab.gameObject);
-            if (string.IsNullOrEmpty(key))
-                continue;
-
-            Vector3 size = CalculateBoundsSize(grab.gameObject);
-            ObjectPoseTarget target = BuildObjectTarget(grab, key, size);
-            if (target != null)
-                targets.Add(target);
-        }
-
-        return targets
-            .GroupBy(target => target.Grab)
-            .Select(group => group.First())
-            .ToList();
-    }
-
-    private static ObjectPoseTarget BuildObjectTarget(
-        XRGrabInteractable grab, string key, Vector3 size)
-    {
-        PoseProfile profile;
-        bool keepIndex = false;
-        string notes;
-
-        switch (key)
-        {
-            case "E01":
-                profile = CylinderGripProfile(0.88f);
-                notes = "E01 세정제 용기용 원통 감싸기 자세.";
-                break;
-            case "E03":
-                profile = BoxGripProfile(0.72f);
-                notes = "E03 하드디스크용 직사각형 지지 자세.";
-                break;
-            case "E04":
-                profile = PinchProfile();
-                notes = "E04 연구비 문서용 엄지·검지 집기 자세.";
-                break;
-            case "E05":
-                profile = SelectProfileFromBounds(size);
-                notes = "E05 실제 Renderer/Collider 종횡비를 기준으로 선택한 자세.";
-                break;
-            case "E06":
-                profile = PhoneGripProfile();
-                notes = "E06 휴대폰을 손바닥과 손가락으로 지지하는 자세.";
-                break;
-            case "UVFlashlight":
-                profile = CylinderGripProfile(1f);
-                keepIndex = true;
-                notes = "UV 손전등 원통 감싸기 자세. 검지는 제외하여 Trigger 입력을 유지함.";
-                break;
-            default:
-                return null;
-        }
-
-        return new ObjectPoseTarget
-        {
-            Grab = grab,
-            Key = key,
-            Size = size,
-            Profile = profile,
-            KeepIndexInput = keepIndex,
-            Notes = notes
-        };
-    }
-
-    private static PoseProfile CylinderGripProfile(float amount)
-    {
-        return new PoseProfile()
-            .Set(HandFinger.Thumb, Scale(amount, 12f, 28f, 34f, 18f))
-            .Set(HandFinger.Index, Scale(amount, 12f, 42f, 48f))
-            .Set(HandFinger.Middle, Scale(amount, 18f, 52f, 60f))
-            .Set(HandFinger.Ring, Scale(amount, 20f, 56f, 64f))
-            .Set(HandFinger.Little, Scale(amount, 22f, 60f, 68f));
-    }
-
-    private static PoseProfile BoxGripProfile(float amount)
-    {
-        return new PoseProfile()
-            .Set(HandFinger.Thumb, Scale(amount, 10f, 24f, 28f, 14f))
-            .Set(HandFinger.Index, Scale(amount, 10f, 34f, 38f))
-            .Set(HandFinger.Middle, Scale(amount, 12f, 38f, 44f))
-            .Set(HandFinger.Ring, Scale(amount, 14f, 42f, 48f))
-            .Set(HandFinger.Little, Scale(amount, 16f, 46f, 52f));
-    }
-
-    private static PoseProfile PinchProfile()
-    {
-        return new PoseProfile()
-            .Set(HandFinger.Thumb, 10f, 24f, 32f, 16f)
-            .Set(HandFinger.Index, 8f, 28f, 30f)
-            .Set(HandFinger.Middle, 6f, 12f, 10f)
-            .Set(HandFinger.Ring, 8f, 16f, 12f)
-            .Set(HandFinger.Little, 10f, 20f, 16f);
-    }
-
-    private static PoseProfile PhoneGripProfile()
-    {
-        return new PoseProfile()
-            .Set(HandFinger.Thumb, 8f, 16f, 18f, 8f)
-            .Set(HandFinger.Index, 8f, 24f, 28f)
-            .Set(HandFinger.Middle, 10f, 30f, 34f)
-            .Set(HandFinger.Ring, 12f, 34f, 38f)
-            .Set(HandFinger.Little, 14f, 38f, 42f);
-    }
-
-    private static PoseProfile SelectProfileFromBounds(Vector3 size)
-    {
-        float largest = Mathf.Max(size.x, size.y, size.z);
-        float smallest = Mathf.Max(0.0001f, Mathf.Min(size.x, size.y, size.z));
-        float ratio = largest / smallest;
-        return ratio >= 4f ? PhoneGripProfile() : BoxGripProfile(0.78f);
-    }
-
-    private static float[] Scale(float amount, params float[] values)
-    {
-        float[] result = new float[values.Length];
-        for (int i = 0; i < values.Length; i++)
-            result[i] = values[i] * amount;
-        return result;
-    }
-
-    private static string ResolveObjectKey(GameObject gameObject)
-    {
-        EvidenceObject evidence = gameObject.GetComponentInParent<EvidenceObject>(true);
-        if (evidence == null)
-            evidence = gameObject.GetComponentInChildren<EvidenceObject>(true);
-        if (evidence != null && IsSupportedEvidence(evidence.Id))
-            return evidence.Id;
-
-        EvidenceSource source = gameObject.GetComponentInParent<EvidenceSource>(true);
-        if (source == null)
-            source = gameObject.GetComponentInChildren<EvidenceSource>(true);
-        if (source != null && IsSupportedEvidence(source.Id))
-            return source.Id;
-
-        if (gameObject.GetComponentInParent<UVLightController>(true) != null ||
-            gameObject.name.IndexOf("UVFlashlight", StringComparison.OrdinalIgnoreCase) >= 0)
-            return "UVFlashlight";
-
-        return null;
-    }
-
-    private static bool IsSupportedEvidence(string id)
-    {
-        return id == "E01" || id == "E03" || id == "E04" || id == "E05" || id == "E06";
-    }
-
-    private static Vector3 CalculateBoundsSize(GameObject root)
-    {
-        bool hasBounds = false;
-        Bounds bounds = default;
-        foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
-        {
-            if (!hasBounds)
-            {
-                bounds = collider.bounds;
-                hasBounds = true;
-            }
-            else
-            {
-                bounds.Encapsulate(collider.bounds);
-            }
-        }
-
-        if (!hasBounds)
-        {
-            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
-            {
-                if (!hasBounds)
-                {
-                    bounds = renderer.bounds;
-                    hasBounds = true;
-                }
-                else
-                {
-                    bounds.Encapsulate(renderer.bounds);
-                }
-            }
-        }
-
-        return hasBounds ? bounds.size : Vector3.zero;
     }
 
     private static bool CanEditScene()

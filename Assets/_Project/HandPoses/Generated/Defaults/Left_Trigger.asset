@@ -19,8 +19,32 @@ MonoBehaviour:
     \uC790\uB3D9 \uC0DD\uC131 \uACB0\uACFC\uB294 \uBAA8\uB378\uBCC4 \uBBF8\uC138
     \uC870\uC815\uC774 \uD544\uC694\uD55C \uCD08\uC548\uC785\uB2C8\uB2E4."
   sourceObjectSize: {x: 0, y: 0, z: 0}
-  generatedDraft: 1
+  generatedDraft: 0
   jointRotations:
+  - transformPath: Rig/radius_ulna/index_meta/index_prox
+    localRotation: {x: -0.12085475, y: -0.058581896, z: 0.1932148, w: -0.97192097}
+  - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd
+    localRotation: {x: 0.02803463, y: 0.009781917, z: -0.5004895, w: 0.8652333}
+  - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd/index_dist
+    localRotation: {x: -0.002603422, y: 0.024875365, z: 0.44451475, w: -0.89542234}
+  - transformPath: Rig/radius_ulna/midd_meta/midd_prox
+    localRotation: {x: 0.097774476, y: 0.0590025, z: -0.05866924, w: 0.99172413}
+  - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd
+    localRotation: {x: 0.00841077, y: -0.00018397716, z: -0.08938754, w: 0.99596137}
+  - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd/midd_dist
+    localRotation: {x: -0.0018336356, y: 0.00025643347, z: -0.08975205, w: 0.99596244}
+  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox
+    localRotation: {x: -0.021253705, y: 0.02753023, z: -0.02882689, w: 0.9989792}
+  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd
+    localRotation: {x: -0.046009, y: -0.10283575, z: -0.12938711, w: 0.98517364}
+  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd/pinky_dist
+    localRotation: {x: 0.005700379, y: -0.06263105, z: -0.09132923, w: 0.99383295}
+  - transformPath: Rig/radius_ulna/ring_meta/ring_prox
+    localRotation: {x: 0.01060456, y: 0.035687465, z: -0.07532921, w: 0.9964635}
+  - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd
+    localRotation: {x: 0.005791626, y: 0.00052168226, z: -0.108115435, w: 0.9941214}
+  - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd/ring_dist
+    localRotation: {x: 0.01239581, y: 0.00028666208, z: -0.124569714, w: 0.9921334}
   - transformPath: Rig/radius_ulna/thumb_trapez
     localRotation: {x: -0.351286, y: -0.15457061, z: -0.32404998, w: 0.8646952}
   - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta
@@ -29,27 +53,3 @@ MonoBehaviour:
     localRotation: {x: 0.03818504, y: -0.257692, z: -0.28016454, w: 0.92392886}
   - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta/thumb_prox/thumb_dist
     localRotation: {x: 0.03089222, y: -0.17507394, z: -0.04632067, w: 0.9829798}
-  - transformPath: Rig/radius_ulna/index_meta/index_prox
-    localRotation: {x: 0.1999339, y: 0.04010673, z: -0.15338022, w: 0.96689874}
-  - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd
-    localRotation: {x: 0.25603208, y: -0.014601443, z: -0.42554379, w: 0.8678409}
-  - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd/index_dist
-    localRotation: {x: 0.24047853, y: -0.010146805, z: -0.37282497, w: 0.89614177}
-  - transformPath: Rig/radius_ulna/midd_meta/midd_prox
-    localRotation: {x: 0.097774476, y: 0.0590025, z: -0.05866924, w: 0.99172413}
-  - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd
-    localRotation: {x: 0.00841077, y: -0.00018397716, z: -0.08938754, w: 0.99596137}
-  - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd/midd_dist
-    localRotation: {x: -0.0018336356, y: 0.00025643347, z: -0.08975205, w: 0.99596244}
-  - transformPath: Rig/radius_ulna/ring_meta/ring_prox
-    localRotation: {x: 0.01060456, y: 0.035687465, z: -0.07532921, w: 0.9964635}
-  - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd
-    localRotation: {x: 0.005791626, y: 0.00052168226, z: -0.108115435, w: 0.9941214}
-  - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd/ring_dist
-    localRotation: {x: 0.01239581, y: 0.00028666208, z: -0.124569714, w: 0.9921334}
-  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox
-    localRotation: {x: -0.021253705, y: 0.02753023, z: -0.02882689, w: 0.9989792}
-  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd
-    localRotation: {x: -0.046009, y: -0.10283575, z: -0.12938711, w: 0.98517364}
-  - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd/pinky_dist
-    localRotation: {x: 0.005700379, y: -0.06263105, z: -0.09132923, w: 0.99383295}

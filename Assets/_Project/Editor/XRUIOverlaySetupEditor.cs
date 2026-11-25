@@ -11,8 +11,8 @@ using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 
 /// <summary>
-/// One-shot scene setup for rendering the in-game World Space UI through
-/// an XR-compatible URP Overlay Camera. Run with -executeMethod.
+/// Manual scene setup for rendering the in-game World Space UI through
+/// an XR-compatible URP Overlay Camera.
 /// </summary>
 public static class XRUIOverlaySetupEditor
 {
@@ -56,105 +56,6 @@ public static class XRUIOverlaySetupEditor
         "RightHandVisual"
     };
 
-    [InitializeOnLoadMethod]
-    private static void ApplyOnceAfterScriptReload()
-    {
-        EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
-        EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
-
-        EditorApplication.delayCall += () =>
-        {
-            if (EditorApplication.isPlayingOrWillChangePlaymode)
-                return;
-
-            bool layersExist = LayerMask.NameToLayer(LayerName) >= 0 &&
-                               LayerMask.NameToLayer(HandLayerName) >= 0;
-            bool depthAwareMaterialsExist =
-                AssetDatabase.LoadAssetAtPath<Material>(UIOverlayMaterialPath) != null &&
-                AssetDatabase.LoadAssetAtPath<Material>(TMPOverlayMaterialPath) != null;
-
-            if (layersExist &&
-                depthAwareMaterialsExist &&
-                !LoadedTargetSceneNeedsForegroundMigration())
-                return;
-
-            try
-            {
-                Apply();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError($"[ROOM 404] XR UI Overlay 자동 적용 중단: {exception.Message}\n{exception}");
-            }
-        };
-    }
-
-    private static void HandlePlayModeStateChanged(PlayModeStateChange state)
-    {
-        if (state != PlayModeStateChange.EnteredEditMode)
-            return;
-
-        EditorApplication.delayCall += () =>
-        {
-            bool depthAwareMaterialsExist =
-                AssetDatabase.LoadAssetAtPath<Material>(UIOverlayMaterialPath) != null &&
-                AssetDatabase.LoadAssetAtPath<Material>(TMPOverlayMaterialPath) != null;
-            if (depthAwareMaterialsExist && !LoadedTargetSceneNeedsForegroundMigration())
-                return;
-
-            try
-            {
-                Apply();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError($"[ROOM 404] 깊이 보존 UI/손 설정 적용 중단: {exception.Message}\n{exception}");
-            }
-        };
-    }
-
-    private static bool LoadedTargetSceneNeedsForegroundMigration()
-    {
-        Scene target = SceneManager.GetSceneByPath(ScenePath);
-        if (!target.IsValid() || !target.isLoaded)
-            return false;
-
-        try
-        {
-            Camera mainCamera = FindMainCamera(target);
-            if (mainCamera.transform.Find(HandOverlayCameraName) == null)
-                return true;
-
-            int foregroundLayer = LayerMask.NameToLayer(HandLayerName);
-            int uiLayer = LayerMask.NameToLayer(LayerName);
-            GameObject rightUiRay = FindNamedGameObject(target, RightUIRayName);
-            if (foregroundLayer < 0 ||
-                uiLayer < 0 ||
-                rightUiRay.layer != foregroundLayer ||
-                rightUiRay.GetComponent<XROverlayVisualLayer>() == null)
-                return true;
-
-            Transform uiCameraTransform = mainCamera.transform.Find(OverlayCameraName);
-            if (uiCameraTransform == null)
-                return true;
-
-            Camera uiCamera = uiCameraTransform.GetComponent<Camera>();
-            foreach (Canvas canvas in FindAllWorldSpaceCanvases(target))
-            {
-                if (canvas.worldCamera != uiCamera ||
-                    !IsLayerRecursive(canvas.gameObject, uiLayer) ||
-                    CanvasNeedsRaycasterNormalization(canvas))
-                    return true;
-            }
-
-            return false;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
     [MenuItem("ROOM 404/UI/Apply Depth-Aware UI And Hands")]
     public static void Apply()
     {
@@ -162,10 +63,10 @@ public static class XRUIOverlaySetupEditor
             throw new InvalidOperationException("Play Mode에서는 XR UI Overlay 설정을 변경할 수 없습니다.");
 
         ValidateRenderPipeline();
+        Scene scene = GetOrOpenTargetScene();
         int overlayLayer = EnsureLayer(LayerName, PreferredLayer);
         int handLayer = EnsureLayer(HandLayerName, PreferredHandLayer);
 
-        Scene scene = GetOrOpenTargetScene();
         Camera mainCamera = FindMainCamera(scene);
         UniversalAdditionalCameraData baseData = mainCamera.GetUniversalAdditionalCameraData();
         if (baseData == null)
@@ -221,7 +122,12 @@ public static class XRUIOverlaySetupEditor
     {
         Scene loadedTarget = SceneManager.GetSceneByPath(ScenePath);
         if (loadedTarget.IsValid() && loadedTarget.isLoaded)
+        {
+            if (loadedTarget.isDirty)
+                throw new InvalidOperationException(
+                    $"'{loadedTarget.path}'에 저장되지 않은 변경이 있어 XR UI Overlay 적용을 중단했습니다.");
             return loadedTarget;
+        }
 
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
@@ -620,57 +526,6 @@ public static class XRUIOverlaySetupEditor
             graphic.raycastTarget = shouldReceiveRaycasts;
             EditorUtility.SetDirty(graphic);
         }
-    }
-
-    private static bool CanvasNeedsRaycasterNormalization(Canvas canvas)
-    {
-        Selectable[] selectables = canvas.GetComponentsInChildren<Selectable>(true);
-        bool isInteractive = selectables.Length > 0;
-
-        foreach (GraphicRaycaster legacyRaycaster in canvas.GetComponents<GraphicRaycaster>())
-        {
-            if (legacyRaycaster.enabled)
-                return true;
-        }
-
-        int enabledTrackedRaycasters = 0;
-        foreach (TrackedDeviceGraphicRaycaster raycaster in
-                 canvas.GetComponents<TrackedDeviceGraphicRaycaster>())
-        {
-            if (raycaster.enabled)
-                enabledTrackedRaycasters++;
-        }
-
-        if (enabledTrackedRaycasters != (isInteractive ? 1 : 0))
-            return true;
-
-        HashSet<Graphic> selectableTargets = new();
-        foreach (Selectable selectable in selectables)
-        {
-            if (selectable.targetGraphic != null)
-                selectableTargets.Add(selectable.targetGraphic);
-        }
-
-        foreach (Graphic graphic in canvas.GetComponentsInChildren<Graphic>(true))
-        {
-            bool shouldReceiveRaycasts = selectableTargets.Contains(graphic) ||
-                                         IntentionalModalBlockers.Contains(graphic.gameObject.name);
-            if (graphic.raycastTarget != shouldReceiveRaycasts)
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsLayerRecursive(GameObject root, int expectedLayer)
-    {
-        foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-        {
-            if (item.gameObject.layer != expectedLayer)
-                return false;
-        }
-
-        return true;
     }
 
     private static void ConfigureHandVisuals(List<GameObject> handVisuals, int handLayer)

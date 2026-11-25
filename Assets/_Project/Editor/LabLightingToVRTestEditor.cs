@@ -8,74 +8,66 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// One-shot editor task that transfers environmental lighting from lab_001
+/// Manual editor tool that transfers environmental lighting from lab_001
 /// to VR_Test without touching gameplay lights such as the UV flashlight.
 /// </summary>
 public static class LabLightingToVRTestEditor
 {
     private const string SourceScenePath = "Assets/_Project/Scenes/lab_001.unity";
     private const string TargetScenePath = "Assets/_Project/Scenes/VR_Test.unity";
-    private const string SessionKey = "ROOM404.LabLightingToVRTest.Applied";
-
-    [InitializeOnLoadMethod]
-    private static void ApplyOnceAfterReload()
-    {
-        EditorApplication.delayCall += () =>
-        {
-            if (EditorApplication.isPlayingOrWillChangePlaymode || SessionState.GetBool(SessionKey, false))
-                return;
-
-            for (int i = 0; i < SceneManager.sceneCount; i++)
-            {
-                Scene loadedScene = SceneManager.GetSceneAt(i);
-                if (loadedScene.isDirty)
-                {
-                    Debug.LogWarning(
-                        $"[ROOM 404] 저장되지 않은 Scene 변경이 있어 조명 자동 적용을 보류했습니다: {loadedScene.path}");
-                    return;
-                }
-            }
-
-            try
-            {
-                Apply();
-                SessionState.SetBool(SessionKey, true);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError($"[ROOM 404] lab_001 조명 적용 실패: {exception.Message}\n{exception}");
-            }
-        };
-    }
-
+    [MenuItem("ROOM 404/Apply lab_001 Lighting to VR_Test")]
     public static void Apply()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
             throw new InvalidOperationException("Play Mode에서는 조명 설정을 복사할 수 없습니다.");
 
-        Scene sourceScene = EditorSceneManager.OpenScene(SourceScenePath, OpenSceneMode.Single);
-        Scene targetScene = EditorSceneManager.OpenScene(TargetScenePath, OpenSceneMode.Additive);
+        Scene sourceScene = SceneManager.GetSceneByPath(SourceScenePath);
+        Scene targetScene = SceneManager.GetSceneByPath(TargetScenePath);
+        EnsureCleanIfLoaded(sourceScene);
+        EnsureCleanIfLoaded(targetScene);
 
-        SceneManager.SetActiveScene(sourceScene);
-        RenderSettingsSnapshot renderSettings = RenderSettingsSnapshot.Capture();
-        List<Light> sourceLights = FindComponentsInScene<Light>(sourceScene);
-        Volume sourceVolume = FindNamedComponent<Volume>(sourceScene, "Global Volume");
+        Scene previousActiveScene = SceneManager.GetActiveScene();
+        bool openedSource = !sourceScene.isLoaded;
+        bool applied = false;
+        try
+        {
+            if (openedSource)
+                sourceScene = EditorSceneManager.OpenScene(SourceScenePath, OpenSceneMode.Additive);
+            if (!targetScene.isLoaded)
+                targetScene = EditorSceneManager.OpenScene(TargetScenePath, OpenSceneMode.Additive);
 
-        SceneManager.SetActiveScene(targetScene);
-        renderSettings.Apply();
-        TransferLights(sourceLights, targetScene);
-        TransferGlobalVolume(sourceVolume, targetScene);
+            SceneManager.SetActiveScene(sourceScene);
+            RenderSettingsSnapshot renderSettings = RenderSettingsSnapshot.Capture();
+            List<Light> sourceLights = FindComponentsInScene<Light>(sourceScene);
+            Volume sourceVolume = FindNamedComponent<Volume>(sourceScene, "Global Volume");
 
-        EditorSceneManager.MarkSceneDirty(targetScene);
-        if (!EditorSceneManager.SaveScene(targetScene))
-            throw new InvalidOperationException("VR_Test Scene 저장에 실패했습니다.");
+            SceneManager.SetActiveScene(targetScene);
+            renderSettings.Apply();
+            TransferLights(sourceLights, targetScene);
+            TransferGlobalVolume(sourceVolume, targetScene);
 
-        EditorSceneManager.CloseScene(sourceScene, true);
-        SceneManager.SetActiveScene(targetScene);
+            EditorSceneManager.MarkSceneDirty(targetScene);
+            if (!EditorSceneManager.SaveScene(targetScene))
+                throw new InvalidOperationException("VR_Test Scene 저장에 실패했습니다.");
 
-        Debug.Log(
-            $"[ROOM 404] lab_001 조명 적용 완료: " +
-            $"Lights={sourceLights.Count}, GlobalVolume={(sourceVolume != null ? "Copied" : "Not Found")}");
+            applied = true;
+            Debug.Log(
+                $"[ROOM 404] lab_001 조명 적용 완료: " +
+                $"Lights={sourceLights.Count}, GlobalVolume={(sourceVolume != null ? "Copied" : "Not Found")}");
+        }
+        finally
+        {
+            if (!applied && previousActiveScene.IsValid() && previousActiveScene.isLoaded)
+                SceneManager.SetActiveScene(previousActiveScene);
+            if (openedSource && sourceScene.IsValid() && sourceScene.isLoaded)
+                EditorSceneManager.CloseScene(sourceScene, true);
+        }
+    }
+
+    private static void EnsureCleanIfLoaded(Scene scene)
+    {
+        if (scene.IsValid() && scene.isLoaded && scene.isDirty)
+            throw new InvalidOperationException($"'{scene.path}'에 저장되지 않은 변경이 있어 조명 적용을 중단했습니다.");
     }
 
     private static void TransferLights(List<Light> sourceLights, Scene targetScene)

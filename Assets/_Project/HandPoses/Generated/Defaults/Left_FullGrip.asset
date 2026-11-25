@@ -19,37 +19,37 @@ MonoBehaviour:
     \uAD7D\uD78C \uC8FC\uBA39 \uCD08\uC548. \uC790\uB3D9 \uC0DD\uC131 \uACB0\uACFC\uB294
     \uBAA8\uB378\uBCC4 \uBBF8\uC138 \uC870\uC815\uC774 \uD544\uC694\uD55C \uCD08\uC548\uC785\uB2C8\uB2E4."
   sourceObjectSize: {x: 0, y: 0, z: 0}
-  generatedDraft: 1
+  generatedDraft: 0
   jointRotations:
   - transformPath: Rig/radius_ulna/thumb_trapez
-    localRotation: {x: -0.24167606, y: -0.19863667, z: -0.31809026, w: 0.894961}
+    localRotation: {x: -0.31639838, y: -0.1636103, z: -0.31061733, w: 0.88127214}
   - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta
-    localRotation: {x: 0.4252097, y: -0.22190326, z: 0.11309553, w: 0.8701526}
+    localRotation: {x: 0.13017024, y: -0.20441656, z: 0.08607846, w: 0.9663644}
   - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta/thumb_prox
-    localRotation: {x: 0.20404434, y: -0.26193005, z: -0.51083755, w: 0.7929719}
+    localRotation: {x: -0.011350269, y: -0.24164172, z: -0.2408556, w: 0.9399303}
   - transformPath: Rig/radius_ulna/thumb_trapez/thumb_meta/thumb_prox/thumb_dist
-    localRotation: {x: 0.06849502, y: -0.16618986, z: -0.23211975, w: 0.95593435}
+    localRotation: {x: 0.0858875, y: -0.09683129, z: -0.27049127, w: 0.953982}
   - transformPath: Rig/radius_ulna/index_meta/index_prox
-    localRotation: {x: 0.25694287, y: 0.037481416, z: -0.18837897, w: 0.9471482}
+    localRotation: {x: -0.12085475, y: -0.058581896, z: 0.1932148, w: -0.97192097}
   - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd
-    localRotation: {x: 0.31682265, y: -0.021802666, z: -0.49867654, w: 0.80651766}
+    localRotation: {x: 0.02803463, y: 0.009781917, z: -0.5004895, w: 0.8652333}
   - transformPath: Rig/radius_ulna/index_meta/index_prox/index_midd/index_dist
-    localRotation: {x: 0.30150917, y: -0.01162078, z: -0.45938855, w: 0.83541656}
+    localRotation: {x: -0.002603422, y: 0.024875365, z: 0.44451475, w: -0.89542234}
   - transformPath: Rig/radius_ulna/midd_meta/midd_prox
-    localRotation: {x: 0.24826847, y: 0.055991974, z: -0.13941047, w: 0.95697045}
+    localRotation: {x: -0.08609962, y: -0.07502682, z: 0.2128604, w: -0.9703857}
   - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd
-    localRotation: {x: 0.30165926, y: -0.023181606, z: -0.47906858, w: 0.82398903}
+    localRotation: {x: 0.003619202, y: -0.00030384236, z: -0.5019234, w: 0.8649045}
   - transformPath: Rig/radius_ulna/midd_meta/midd_prox/midd_midd/midd_dist
-    localRotation: {x: 0.19795653, y: -0.018730525, z: -0.5943944, w: 0.77920365}
+    localRotation: {x: 0.005330813, y: 0.0038890175, z: 0.56132, w: -0.8275726}
   - transformPath: Rig/radius_ulna/ring_meta/ring_prox
-    localRotation: {x: 0.028644377, y: 0.03514891, z: -0.2633255, w: 0.9636411}
+    localRotation: {x: 0.0038208468, y: 0.039153084, z: -0.2471608, w: 0.96817565}
   - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd
-    localRotation: {x: 0.047460604, y: -0.0011530207, z: -0.6167703, w: 0.78571063}
+    localRotation: {x: 0.0032776003, y: 0.0031986986, z: -0.5476484, w: 0.8366961}
   - transformPath: Rig/radius_ulna/ring_meta/ring_prox/ring_midd/ring_dist
-    localRotation: {x: 0.06242669, y: 0.00088630506, z: -0.68158185, w: 0.72907394}
+    localRotation: {x: 0.008932929, y: -0.0064539216, z: -0.61776257, w: 0.7862874}
   - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox
-    localRotation: {x: -0.19275607, y: 0.029212, z: -0.14481299, w: 0.9700627}
+    localRotation: {x: -0.03268788, y: 0.020916022, z: -0.21856241, w: 0.9750511}
   - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd
-    localRotation: {x: -0.32782966, y: -0.061629876, z: -0.5793706, w: 0.7436801}
+    localRotation: {x: -0.10563583, y: -0.07540993, z: -0.58903164, w: 0.79761904}
   - transformPath: Rig/radius_ulna/pinky_meta/pinky_prox/pinky_midd/pinky_dist
-    localRotation: {x: -0.25826934, y: -0.019036284, z: -0.6258837, w: 0.7356667}
+    localRotation: {x: -0.20193976, y: -0.07519886, z: -0.58458084, w: 0.78219604}
