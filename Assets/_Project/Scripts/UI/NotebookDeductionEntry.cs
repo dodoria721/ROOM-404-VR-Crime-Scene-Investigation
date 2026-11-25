@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,10 +12,12 @@ public sealed class NotebookDeductionEntry : MonoBehaviour
     [SerializeField] private TMP_Text progressText;
 
     private EvidenceManager evidence;
+    private Coroutine evidenceSubscriptionRoutine;
 
     private void OnEnable()
     {
-        BindEvidence();
+        if (!TryBindEvidence() && evidenceSubscriptionRoutine == null)
+            evidenceSubscriptionRoutine = StartCoroutine(WaitForEvidenceManager());
         if (result != null)
             result.ResultDetermined += OnResultDetermined;
         if (startButton != null)
@@ -22,35 +25,50 @@ public sealed class NotebookDeductionEntry : MonoBehaviour
         Refresh();
     }
 
-    private void Start()
-    {
-        // Covers a page enabled during scene initialization before EvidenceManager.Awake.
-        BindEvidence();
-        Refresh();
-    }
-
     private void OnDisable()
     {
-        if (evidence != null)
-            evidence.EvidenceRegistered -= OnEvidenceRegistered;
-        evidence = null;
+        if (evidenceSubscriptionRoutine != null)
+        {
+            StopCoroutine(evidenceSubscriptionRoutine);
+            evidenceSubscriptionRoutine = null;
+        }
+        UnbindEvidence();
         if (result != null)
             result.ResultDetermined -= OnResultDetermined;
         if (startButton != null)
             startButton.onClick.RemoveListener(OpenDeduction);
     }
 
-    private void BindEvidence()
+    private bool TryBindEvidence()
     {
         var current = EvidenceManager.Instance;
-        if (evidence == current)
-            return;
+        if (current == null)
+            return false;
 
-        if (evidence != null)
-            evidence.EvidenceRegistered -= OnEvidenceRegistered;
+        if (evidence == current)
+            return true;
+
+        UnbindEvidence();
         evidence = current;
-        if (evidence != null)
-            evidence.EvidenceRegistered += OnEvidenceRegistered;
+        evidence.EvidenceRegistered += OnEvidenceRegistered;
+        return true;
+    }
+
+    private void UnbindEvidence()
+    {
+        if (evidence is not null)
+            evidence.EvidenceRegistered -= OnEvidenceRegistered;
+        evidence = null;
+    }
+
+    private IEnumerator WaitForEvidenceManager()
+    {
+        do
+            yield return null;
+        while (!TryBindEvidence());
+
+        evidenceSubscriptionRoutine = null;
+        Refresh();
     }
 
     private void OnEvidenceRegistered(EvidenceData _) => Refresh();

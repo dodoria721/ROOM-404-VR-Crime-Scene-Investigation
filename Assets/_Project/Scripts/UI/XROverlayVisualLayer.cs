@@ -34,11 +34,11 @@ public sealed class XROverlayVisualLayer : MonoBehaviour
 #if UNITY_EDITOR
         rayInteractor = GetComponent<XRRayInteractor>();
 #endif
-        ResolveLayerAndApply();
     }
 
     private void OnEnable()
     {
+        trackedReticle = null;
         ResolveLayerAndApply();
     }
 
@@ -53,17 +53,20 @@ public sealed class XROverlayVisualLayer : MonoBehaviour
         MonitorUIInteraction();
 #endif
 
-        if (lineVisual == null)
+        if (overlayLayer < 0 || lineVisual == null)
             return;
 
         GameObject reticle = lineVisual.reticle;
         if (reticle == null)
+        {
+            trackedReticle = null;
             return;
+        }
 
         if (reticle != trackedReticle || reticle.layer != overlayLayer)
         {
             trackedReticle = reticle;
-            ApplyRecursively(reticle);
+            ApplyLayerToHierarchy(reticle.transform);
         }
     }
 
@@ -84,13 +87,17 @@ public sealed class XROverlayVisualLayer : MonoBehaviour
         if (overlayLayer < 0)
             return;
 
-        ApplyRecursively(gameObject);
+        ApplyLayerToHierarchy(transform);
     }
 
-    private void ApplyRecursively(GameObject root)
+    private void ApplyLayerToHierarchy(Transform root)
     {
-        foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            item.gameObject.layer = overlayLayer;
+        GameObject visual = root.gameObject;
+        if (visual.layer != overlayLayer)
+            visual.layer = overlayLayer;
+
+        for (int i = 0; i < root.childCount; i++)
+            ApplyLayerToHierarchy(root.GetChild(i));
     }
 
 #if UNITY_EDITOR

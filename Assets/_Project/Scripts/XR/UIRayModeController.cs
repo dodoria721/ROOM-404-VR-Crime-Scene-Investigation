@@ -26,6 +26,11 @@ public sealed class UIRayModeController : MonoBehaviour
             return;
         }
 
+        // Match the left hand's direct overlap mask for fixed UV evidence.
+        int uvTargetLayer = LayerMask.NameToLayer("UVTarget");
+        if (uvTargetLayer >= 0)
+            rightDirectInteractor.physicsLayerMask |= 1 << uvTargetLayer;
+
         panelGroups = new CanvasGroup[interactivePanels.Length][][];
         for (int i = 0; i < interactivePanels.Length; i++)
         {
